@@ -258,8 +258,64 @@ function createFallbackRoom() {
     console.log('[DEBUG] Fallback room created');
 }
 
-// Create simple avatar
+// Create avatar based on selection
 function createSimpleAvatar() {
+    if (AppState.selectedAvatar && AppState.selectedAvatar.type === '3d-model') {
+        // Try to load 3D model avatar
+        load3DAvatar(AppState.selectedAvatar.modelPath);
+    } else {
+        // Create simple geometric avatar
+        createGeometricAvatar();
+    }
+}
+
+// Load 3D GLB avatar model
+function load3DAvatar(modelPath) {
+    console.log('[DEBUG] Loading 3D avatar model:', modelPath);
+    
+    if (!THREE.GLTFLoader) {
+        console.warn('[DEBUG] GLTFLoader not available, falling back to geometric avatar');
+        createGeometricAvatar();
+        return;
+    }
+    
+    const loader = new THREE.GLTFLoader();
+    
+    loader.load(
+        modelPath,
+        (gltf) => {
+            // Success - add 3D model to scene
+            const avatar = gltf.scene;
+            avatar.scale.setScalar(1);
+            avatar.position.set(0, 0, 2);
+            
+            // Enable shadows
+            avatar.traverse((child) => {
+                if (child.isMesh) {
+                    child.castShadow = true;
+                    child.receiveShadow = true;
+                }
+            });
+            
+            AppState.scene.add(avatar);
+            AppState.avatar = avatar;
+            
+            console.log('[DEBUG] 3D avatar loaded successfully');
+        },
+        (progress) => {
+            const percent = (progress.loaded / progress.total * 100);
+            console.log('[DEBUG] Avatar loading progress:', percent + '%');
+        },
+        (error) => {
+            console.error('[ERROR] Failed to load 3D avatar:', error);
+            console.log('[DEBUG] Falling back to geometric avatar');
+            createGeometricAvatar();
+        }
+    );
+}
+
+// Create geometric avatar as fallback
+function createGeometricAvatar() {
     // Create a simple avatar representation
     const avatarGroup = new THREE.Group();
     
@@ -283,7 +339,62 @@ function createSimpleAvatar() {
     AppState.scene.add(avatarGroup);
     AppState.avatar = avatarGroup;
 
-    console.log('[DEBUG] Simple avatar created');
+    console.log('[DEBUG] Geometric avatar created');
+}
+
+// 3D Avatar selection function
+function selectPreset3D(modelPath) {
+    console.log('[DEBUG] Selecting 3D preset avatar:', modelPath);
+    
+    try {
+        if (!modelPath) {
+            throw new Error('No model path provided');
+        }
+        
+        // Update selected avatar with 3D model info
+        AppState.selectedAvatar = {
+            type: '3d-model',
+            modelPath: modelPath,
+            url: modelPath
+        };
+        
+        // Update UI
+        const enterRoomBtn = document.getElementById('enter-room-btn');
+        const presets = document.querySelectorAll('.avatar-preset');
+        
+        // Update selection visuals
+        presets.forEach(preset => {
+            const isSelected = preset.getAttribute('data-model') === modelPath;
+            preset.classList.toggle('selected', isSelected);
+        });
+        
+        // Enable enter button
+        if (enterRoomBtn) {
+            enterRoomBtn.disabled = false;
+            console.log('[DEBUG] Enabled enter room button for 3D avatar');
+        }
+        
+        console.log('[DEBUG] 3D avatar selected successfully:', modelPath);
+        
+    } catch (error) {
+        console.error('[ERROR] Failed to select 3D avatar:', error);
+        
+        // Fallback to 2D avatar
+        console.log('[DEBUG] Falling back to 2D avatar selection');
+        AppState.selectedAvatar = {
+            type: 'preset',
+            id: 'female1',
+            url: AVATAR_ASSETS['female1']
+        };
+        
+        // Enable enter button even with fallback
+        const enterRoomBtn = document.getElementById('enter-room-btn');
+        if (enterRoomBtn) {
+            enterRoomBtn.disabled = false;
+        }
+        
+        showErrorNotification('3D avatar not available. Using default avatar instead.');
+    }
 }
 
 // Movement controls setup
@@ -471,6 +582,7 @@ document.addEventListener('DOMContentLoaded', function() {
     window.selectRoom = selectRoom;
     window.closeAvatarModal = closeAvatarModal;
     window.selectPreset = selectPreset;
+    window.selectPreset3D = selectPreset3D;
     
     console.log('[DEBUG] Application initialized');
 });
