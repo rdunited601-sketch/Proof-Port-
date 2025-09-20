@@ -141,8 +141,8 @@ async function setup3DEnvironment() {
         floor.receiveShadow = true;
         AppState.scene.add(floor);
 
-        // Create a simple room based on selected room
-        createSimpleRoom();
+        // Load GLB environment for the selected room
+        await loadRoomEnvironment();
 
         // Create avatar
         createSimpleAvatar();
@@ -158,12 +158,76 @@ async function setup3DEnvironment() {
     }
 }
 
-// Create simple room environment
-function createSimpleRoom() {
+// Load GLB room environment based on selected room
+async function loadRoomEnvironment() {
+    const roomFiles = {
+        'mentor-room': 'assets/environments/mentor-room.glb',
+        'career-hall': 'assets/environments/career-hall.glb',
+        'innovation-lab': 'assets/environments/innovation-lab.glb'
+    };
+
+    const roomFile = roomFiles[AppState.selectedRoom];
+    
+    if (!roomFile) {
+        console.warn('[DEBUG] No GLB file defined for room:', AppState.selectedRoom);
+        createFallbackRoom();
+        return;
+    }
+
+    console.log('[DEBUG] Loading GLB environment:', roomFile);
+    
+    try {
+        // Use GLTFLoader to load the environment
+        const loader = new THREE.GLTFLoader();
+        
+        const gltf = await new Promise((resolve, reject) => {
+            loader.load(
+                roomFile,
+                (gltf) => resolve(gltf),
+                (progress) => {
+                    const percent = (progress.loaded / progress.total * 100);
+                    console.log('[DEBUG] Loading progress:', percent + '%');
+                },
+                (error) => reject(error)
+            );
+        });
+
+        // Add the loaded model to the scene
+        const roomModel = gltf.scene;
+        roomModel.scale.setScalar(1); // Adjust scale if needed
+        roomModel.position.set(0, 0, 0);
+        
+        // Enable shadows on all meshes
+        roomModel.traverse((child) => {
+            if (child.isMesh) {
+                child.castShadow = true;
+                child.receiveShadow = true;
+                
+                // Store collision objects
+                if (child.name.toLowerCase().includes('collision') || 
+                    child.name.toLowerCase().includes('wall') ||
+                    child.name.toLowerCase().includes('furniture')) {
+                    physics.collidableObjects.push(child);
+                }
+            }
+        });
+
+        AppState.scene.add(roomModel);
+        console.log('[DEBUG] GLB environment loaded successfully:', roomFile);
+        
+    } catch (error) {
+        console.error('[ERROR] Failed to load GLB environment:', error);
+        console.log('[DEBUG] Falling back to basic room geometry');
+        createFallbackRoom();
+    }
+}
+
+// Create fallback room when GLB loading fails
+function createFallbackRoom() {
     const roomColor = AppState.selectedRoom === 'mentor-room' ? 0x2C3E50 :
                      AppState.selectedRoom === 'innovation-lab' ? 0x8E44AD : 0x27AE60;
 
-    // Create some furniture
+    // Create some basic furniture as fallback
     const tableGeometry = new THREE.BoxGeometry(3, 0.1, 1.5);
     const tableMaterial = new THREE.MeshStandardMaterial({ color: 0x8B4513 });
     const table = new THREE.Mesh(tableGeometry, tableMaterial);
@@ -172,7 +236,7 @@ function createSimpleRoom() {
     table.receiveShadow = true;
     AppState.scene.add(table);
 
-    // Add a few chairs
+    // Add chairs
     for (let i = 0; i < 4; i++) {
         const chairGeometry = new THREE.BoxGeometry(0.4, 0.8, 0.4);
         const chairMaterial = new THREE.MeshStandardMaterial({ color: roomColor });
@@ -181,9 +245,11 @@ function createSimpleRoom() {
         chair.castShadow = true;
         chair.receiveShadow = true;
         AppState.scene.add(chair);
+        physics.collidableObjects.push(chair);
     }
-
-    console.log('[DEBUG] Simple room created');
+    
+    physics.collidableObjects.push(table);
+    console.log('[DEBUG] Fallback room created');
 }
 
 // Create simple avatar
