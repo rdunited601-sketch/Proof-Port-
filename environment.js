@@ -163,6 +163,37 @@ function addRoomFurniture(room) {
     }
 }
 
+// Simple room data registry (extendable)
+const roomData = roomData || {};
+roomData['career-hall'] = {
+    id: 'career-hall',
+    name: 'Career Hall',
+    color: 0xf5f5f5,
+    description: 'Professional hall with info boards and resource library'
+};
+
+function addCareerHallFurniture() {
+    // Info boards
+    const boardGeometry = new THREE.PlaneGeometry(2, 1.2);
+    const boardMaterial = new THREE.MeshStandardMaterial({ color: 0xffffff });
+    const leftBoard = new THREE.Mesh(boardGeometry, boardMaterial);
+    leftBoard.position.set(-6, 1.5, -6);
+    leftBoard.rotation.y = 0.6;
+    scene.add(leftBoard);
+
+    const rightBoard = leftBoard.clone();
+    rightBoard.position.set(6, 1.5, -6);
+    rightBoard.rotation.y = -0.6;
+    scene.add(rightBoard);
+
+    // Library shelf (simple box)
+    const shelfGeometry = new THREE.BoxGeometry(1.5, 2, 0.5);
+    const shelfMaterial = new THREE.MeshStandardMaterial({ color: 0x8b5a2b });
+    const shelf = new THREE.Mesh(shelfGeometry, shelfMaterial);
+    shelf.position.set(-8, 1, 0);
+    scene.add(shelf);
+}
+
 function loadAvatar(avatarData) {
     const loader = new THREE.GLTFLoader();
     

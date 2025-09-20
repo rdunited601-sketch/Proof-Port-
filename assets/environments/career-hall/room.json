@@ -1,0 +1,11 @@
+{
+  "id": "career-hall",
+  "name": "Career Hall",
+  "color": "#f5f5f5",
+  "description": "Professional hall with info boards and resource library",
+  "furniture": [
+    { "type": "info-board", "position": [ -6, 1.5, -6 ], "rotation": [ 0, 0.6, 0 ], "size": [ 2, 1.5 ] },
+    { "type": "info-board", "position": [ 6, 1.5, -6 ], "rotation": [ 0, -0.6, 0 ], "size": [ 2, 1.5 ] },
+    { "type": "library-shelf", "position": [ -8, 1, 0 ], "rotation": [ 0, 0, 0 ], "size": [ 1.5, 2, 0.5 ] }
+  ]
+}

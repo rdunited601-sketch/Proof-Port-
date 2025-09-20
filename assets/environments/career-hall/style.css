@@ -1,0 +1,6 @@
+/* Career Hall styles (minimal) */
+.career-hall-board {
+  background: linear-gradient(180deg,#ffffff,#f0f0f0);
+  border: 2px solid #ddd;
+  padding: 8px;
+}
