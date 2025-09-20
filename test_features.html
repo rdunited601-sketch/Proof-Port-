@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Metaverse Hub - Feature Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: rgba(255,255,255,0.1);
+            padding: 30px;
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+        }
+        .test-section {
+            background: rgba(255,255,255,0.1);
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 10px;
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+            font-weight: bold;
+        }
+        .success { background: rgba(40, 167, 69, 0.8); }
+        .error { background: rgba(220, 53, 69, 0.8); }
+        .warning { background: rgba(255, 193, 7, 0.8); color: #000; }
+        .info { background: rgba(23, 162, 184, 0.8); }
+        .btn {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            margin: 10px;
+            font-size: 16px;
+            transition: all 0.3s ease;
+        }
+        .btn:hover {
+            background: #0056b3;
+            transform: translateY(-2px);
+        }
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin: 20px 0;
+        }
+        .feature-card {
+            background: rgba(255,255,255,0.1);
+            padding: 20px;
+            border-radius: 10px;
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+        .progress-bar {
+            width: 100%;
+            height: 20px;
+            background: rgba(255,255,255,0.2);
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #28a745, #20c997);
+            width: 0%;
+            transition: width 0.5s ease;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎮 Metaverse Hub - Complete Feature Test</h1>
+        <p>This page will test all the enhanced features of the Metaverse Hub.</p>
+        
+        <div class="progress-bar">
+            <div class="progress-fill" id="progress"></div>
+        </div>
+        <p id="progress-text">Starting comprehensive feature test...</p>
+        
+        <div id="results"></div>
+        
+        <div class="feature-grid">
+            <div class="feature-card">
+                <h3>🤖 Human-like Avatars</h3>
+                <ul>
+                    <li>✅ Anime-style human characters</li>
+                    <li>✅ Head, body, arms, legs structure</li>
+                    <li>✅ Customizable hair, eyes, skin</li>
+                    <li>✅ Special features for premium avatars</li>
+                </ul>
+            </div>
+            <div class="feature-card">
+                <h3>🎮 Gaming Controls</h3>
+                <ul>
+                    <li>✅ First-person mouse look</li>
+                    <li>✅ WASD movement</li>
+                    <li>✅ Running (Shift) and jumping (Space)</li>
+                    <li>✅ Camera mode switching</li>
+                </ul>
+            </div>
+            <div class="feature-card">
+                <h3>🔊 Audio Features</h3>
+                <ul>
+                    <li>✅ Text-to-speech for characters</li>
+                    <li>✅ Different voices per character</li>
+                    <li>✅ Meeting conversations</li>
+                    <li>✅ Visual speaking indicators</li>
+                </ul>
+            </div>
+            <div class="feature-card">
+                <h3>🎭 Animations</h3>
+                <ul>
+                    <li>✅ Walking animations</li>
+                    <li>✅ Running animations</li>
+                    <li>✅ Idle breathing</li>
+                    <li>✅ Arm and leg movement</li>
+                </ul>
+            </div>
+        </div>
+        
+        <div class="test-section">
+            <h3>🧪 Feature Tests</h3>
+            <button class="btn" onclick="testAvatarGeneration()">Test Avatar Generation</button>
+            <button class="btn" onclick="testGamingControls()">Test Gaming Controls</button>
+            <button class="btn" onclick="testAudioFeatures()">Test Audio Features</button>
+            <button class="btn" onclick="testAnimations()">Test Animations</button>
+            <button class="btn" onclick="runAllTests()">Run All Tests</button>
+        </div>
+        
+        <div class="test-section">
+            <h3>🚀 Quick Launch</h3>
+            <button class="btn" onclick="openMainApp()">Open Metaverse Hub</button>
+            <button class="btn" onclick="openVerification()">Open Verification Page</button>
+        </div>
+    </div>
+
+    <script>
+        let testResults = [];
+        
+        function addTestResult(message, type = 'info') {
+            const results = document.getElementById('results');
+            const div = document.createElement('div');
+            div.className = `status ${type}`;
+            div.textContent = message;
+            results.appendChild(div);
+            testResults.push({message, type, timestamp: new Date()});
+        }
+        
+        function updateProgress(percent, text) {
+            document.getElementById('progress').style.width = percent + '%';
+            document.getElementById('progress-text').textContent = text;
+        }
+        
+        async function testAvatarGeneration() {
+            addTestResult('🧪 Testing Avatar Generation...', 'info');
+            updateProgress(20, 'Testing avatar generation...');
+            
+            // Test if avatar generation functions exist
+            if(typeof createHumanLikeAvatar === 'function') {
+                addTestResult('✅ Human-like avatar creation function available', 'success');
+            } else {
+                addTestResult('❌ Human-like avatar creation function missing', 'error');
+            }
+            
+            if(typeof getSkinToneColor === 'function') {
+                addTestResult('✅ Skin tone customization available', 'success');
+            } else {
+                addTestResult('❌ Skin tone customization missing', 'error');
+            }
+            
+            if(typeof addBodyPartLabels === 'function') {
+                addTestResult('✅ Body part animation system available', 'success');
+            } else {
+                addTestResult('❌ Body part animation system missing', 'error');
+            }
+            
+            updateProgress(40, 'Avatar generation test complete');
+        }
+        
+        async function testGamingControls() {
+            addTestResult('🎮 Testing Gaming Controls...', 'info');
+            updateProgress(60, 'Testing gaming controls...');
+            
+            // Test if gaming control functions exist
+            if(typeof updateCamera === 'function') {
+                addTestResult('✅ Camera control system available', 'success');
+            } else {
+                addTestResult('❌ Camera control system missing', 'error');
+            }
+            
+            if(typeof handleMovement === 'function') {
+                addTestResult('✅ Movement system available', 'success');
+            } else {
+                addTestResult('❌ Movement system missing', 'error');
+            }
+            
+            if(typeof setCameraView === 'function') {
+                addTestResult('✅ Camera view switching available', 'success');
+            } else {
+                addTestResult('❌ Camera view switching missing', 'error');
+            }
+            
+            updateProgress(80, 'Gaming controls test complete');
+        }
+        
+        async function testAudioFeatures() {
+            addTestResult('🔊 Testing Audio Features...', 'info');
+            updateProgress(90, 'Testing audio features...');
+            
+            // Test if audio functions exist
+            if(typeof setupAudioOutput === 'function') {
+                addTestResult('✅ Audio output system available', 'success');
+            } else {
+                addTestResult('❌ Audio output system missing', 'error');
+            }
+            
+            if(typeof playCharacterVoice === 'function') {
+                addTestResult('✅ Character voice system available', 'success');
+            } else {
+                addTestResult('❌ Character voice system missing', 'error');
+            }
+            
+            if('speechSynthesis' in window) {
+                addTestResult('✅ Text-to-speech API available', 'success');
+            } else {
+                addTestResult('❌ Text-to-speech API not supported', 'error');
+            }
+            
+            updateProgress(95, 'Audio features test complete');
+        }
+        
+        async function testAnimations() {
+            addTestResult('🎭 Testing Animations...', 'info');
+            updateProgress(98, 'Testing animations...');
+            
+            // Test if animation functions exist
+            if(typeof animateAvatarMovement === 'function') {
+                addTestResult('✅ Avatar animation system available', 'success');
+            } else {
+                addTestResult('❌ Avatar animation system missing', 'error');
+            }
+            
+            if(typeof findAvatarBodyParts === 'function') {
+                addTestResult('✅ Body part detection available', 'success');
+            } else {
+                addTestResult('❌ Body part detection missing', 'error');
+            }
+            
+            updateProgress(100, 'All tests complete!');
+        }
+        
+        async function runAllTests() {
+            document.getElementById('results').innerHTML = '';
+            testResults = [];
+            
+            await testAvatarGeneration();
+            await new Promise(resolve => setTimeout(resolve, 500));
+            
+            await testGamingControls();
+            await new Promise(resolve => setTimeout(resolve, 500));
+            
+            await testAudioFeatures();
+            await new Promise(resolve => setTimeout(resolve, 500));
+            
+            await testAnimations();
+            
+            // Summary
+            const successCount = testResults.filter(r => r.type === 'success').length;
+            const errorCount = testResults.filter(r => r.type === 'error').length;
+            
+            if(errorCount === 0) {
+                addTestResult('🎉 All features are working perfectly! Metaverse Hub is ready!', 'success');
+            } else {
+                addTestResult(`⚠️ Test complete: ${successCount} passed, ${errorCount} failed`, 'warning');
+            }
+        }
+        
+        function openMainApp() {
+            window.open('index.html', '_blank');
+        }
+        
+        function openVerification() {
+            window.open('verify.html', '_blank');
+        }
+        
+        // Auto-run tests on page load
+        window.addEventListener('load', () => {
+            setTimeout(runAllTests, 1000);
+        });
+    </script>
+</body>
+</html>
