@@ -147,6 +147,9 @@ async function setup3DEnvironment() {
         // Create avatar
         createSimpleAvatar();
 
+        // Setup movement controls
+        setupMovementControls();
+        
         // Set initialization flag
         AppState.initialized = true;
         
@@ -178,6 +181,9 @@ async function loadRoomEnvironment() {
     
     try {
         // Use GLTFLoader to load the environment
+        if (!THREE.GLTFLoader) {
+            throw new Error('GLTFLoader not available');
+        }
         const loader = new THREE.GLTFLoader();
         
         const gltf = await new Promise((resolve, reject) => {
@@ -278,6 +284,144 @@ function createSimpleAvatar() {
     AppState.avatar = avatarGroup;
 
     console.log('[DEBUG] Simple avatar created');
+}
+
+// Movement controls setup
+function setupMovementControls() {
+    // Add event listeners for keyboard controls
+    document.addEventListener('keydown', onKeyDown);
+    document.addEventListener('keyup', onKeyUp);
+    
+    // Start animation loop
+    animate();
+    
+    console.log('[DEBUG] Movement controls initialized');
+}
+
+// Avatar movement state
+const movement = {
+    keys: {},
+    velocity: { x: 0, y: 0, z: 0 },
+    speed: 0.1,
+    runSpeed: 0.2,
+    jumpSpeed: 0.3,
+    gravity: 0.01,
+    onGround: true,
+    isSitting: false,
+    originalY: 0
+};
+
+// Key input handlers
+function onKeyDown(event) {
+    movement.keys[event.code] = true;
+    
+    // Handle sitting (C key)
+    if (event.code === 'KeyC' && !movement.isSitting) {
+        sitAvatar();
+    } else if (event.code === 'KeyC' && movement.isSitting) {
+        standAvatar();
+    }
+}
+
+function onKeyUp(event) {
+    movement.keys[event.code] = false;
+}
+
+// Sitting functions
+function sitAvatar() {
+    if (!AppState.avatar || movement.isSitting) return;
+    
+    movement.isSitting = true;
+    movement.originalY = AppState.avatar.position.y;
+    
+    // Lower avatar to sitting position
+    AppState.avatar.position.y -= 0.5;
+    
+    // Rotate avatar slightly for sitting pose
+    AppState.avatar.rotation.x = -0.1;
+    
+    console.log('[DEBUG] Avatar sitting');
+}
+
+function standAvatar() {
+    if (!AppState.avatar || !movement.isSitting) return;
+    
+    movement.isSitting = false;
+    
+    // Restore avatar to standing position
+    AppState.avatar.position.y = movement.originalY;
+    AppState.avatar.rotation.x = 0;
+    
+    console.log('[DEBUG] Avatar standing');
+}
+
+// Update avatar position based on input
+function updateAvatarMovement() {
+    if (!AppState.avatar || movement.isSitting) return;
+    
+    // Determine movement speed (running vs walking)
+    const isRunning = movement.keys['ShiftLeft'] || movement.keys['ShiftRight'];
+    const currentSpeed = isRunning ? movement.runSpeed : movement.speed;
+    
+    // Handle horizontal movement (WASD)
+    if (movement.keys['KeyW']) {
+        movement.velocity.z = -currentSpeed;
+    } else if (movement.keys['KeyS']) {
+        movement.velocity.z = currentSpeed;
+    } else {
+        movement.velocity.z *= 0.8; // Friction
+    }
+    
+    if (movement.keys['KeyA']) {
+        movement.velocity.x = -currentSpeed;
+    } else if (movement.keys['KeyD']) {
+        movement.velocity.x = currentSpeed;
+    } else {
+        movement.velocity.x *= 0.8; // Friction
+    }
+    
+    // Handle jumping (Space)
+    if (movement.keys['Space'] && movement.onGround) {
+        movement.velocity.y = movement.jumpSpeed;
+        movement.onGround = false;
+    }
+    
+    // Apply gravity
+    if (!movement.onGround) {
+        movement.velocity.y -= movement.gravity;
+    }
+    
+    // Update avatar position
+    AppState.avatar.position.x += movement.velocity.x;
+    AppState.avatar.position.z += movement.velocity.z;
+    AppState.avatar.position.y += movement.velocity.y;
+    
+    // Ground collision (simple)
+    if (AppState.avatar.position.y <= 0.6) {
+        AppState.avatar.position.y = 0.6;
+        movement.velocity.y = 0;
+        movement.onGround = true;
+    }
+    
+    // Boundary limits (keep avatar in scene)
+    AppState.avatar.position.x = Math.max(-15, Math.min(15, AppState.avatar.position.x));
+    AppState.avatar.position.z = Math.max(-15, Math.min(15, AppState.avatar.position.z));
+    
+    // Update camera to follow avatar
+    updateCameraFollow();
+}
+
+// Camera follow system
+function updateCameraFollow() {
+    if (!AppState.avatar || !AppState.camera) return;
+    
+    // Third-person camera behind and above avatar
+    const cameraOffset = new THREE.Vector3(0, 3, 8);
+    const targetPosition = AppState.avatar.position.clone().add(cameraOffset);
+    
+    // Smooth camera movement
+    AppState.camera.position.lerp(targetPosition, 0.1);
+    AppState.camera.lookAt(AppState.avatar.position);
 }
 
 // Loading screen management (disabled)
@@ -493,8 +637,8 @@ function selectPreset(presetId) {
 function animate() {
     requestAnimationFrame(animate);
     
-    // Update avatar position based on input
-    updateAvatarPosition();
+    // Update avatar movement
+    updateAvatarMovement();
     
     // Render the scene
     if (AppState.renderer && AppState.scene && AppState.camera) {
