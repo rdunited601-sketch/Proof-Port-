@@ -1,9 +1,6 @@
 @echo off
 echo Starting Metaverse Hub...
 echo.
-echo Opening test page first to check compatibility...
-start http://localhost:8000/test.html
-echo.
 echo Waiting 3 seconds before opening main application...
 timeout /t 3 /nobreak > nul
 echo.

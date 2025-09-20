@@ -28,17 +28,11 @@ REM Open the main application
 echo 🎮 Opening Metaverse Hub...
 start http://localhost:8000/index.html
 
-REM Open feature test page
-echo 🧪 Opening feature test page...
-timeout /t 2 /nobreak >nul
-start http://localhost:8000/test_features.html
-
 echo.
 echo ✅ Metaverse Hub is now running!
 echo.
 echo 📱 Access Points:
 echo    • Main App: http://localhost:8000/index.html
-echo    • Feature Test: http://localhost:8000/test_features.html
 echo    • Verification: http://localhost:8000/verify.html
 echo.
 echo 🎮 Features Available:

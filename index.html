@@ -4,7 +4,15 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Metaverse Hub - 3D Learning Platform</title>
+    <!-- Styles -->
     <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="notifications.css">
+    <link rel="stylesheet" href="avatar-selection.css">
+    <link rel="stylesheet" href="environment.css">
+    <link rel="stylesheet" href="modal.css">
+    <link rel="stylesheet" href="avaturn-upload.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <!-- Scripts -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/PointerLockControls.js"></script>
@@ -54,11 +62,11 @@
                         <h3>Career Hall</h3>
                     </div>
                     <div class="room-card-body">
-                        <p>Professional space for career guidance and counseling</p>
+                        <p>Professional space for career guidance and networking</p>
                         <div class="room-features">
-                            <span class="feature-tag">Career Resources</span>
-                            <span class="feature-tag">Guidance Tools</span>
-                            <span class="feature-tag">Consultation</span>
+                            <span class="feature-tag">Info Boards</span>
+                            <span class="feature-tag">Resource Library</span>
+                            <span class="feature-tag">Career Path</span>
                         </div>
                         <button class="btn btn--primary" onclick="selectRoom('career-hall')">Enter Room</button>
                     </div>
@@ -67,295 +75,222 @@
         </div>
     </div>
 
-    <!-- Avatar Selection Modal -->
-    <div id="avatar-modal" class="modal hidden">
-        <div class="modal-content avatar-modal-content">
-            <div class="modal-header">
-                <h2>Create Your Avatar</h2>
-                <button class="btn btn--outline btn--sm" onclick="closeAvatarModal()">×</button>
+
+    <!-- 3D View Container -->
+    <div id="game-container" style="display: none;">
+        <div id="metaverse-space"></div>
+        <canvas id="three-canvas"></canvas>
+        
+        <!-- Loading Screen -->
+        <div id="loading-screen" style="display: none;">
+            <div class="loading-content">
+                <div class="spinner"></div>
+                <div id="loading-progress">Loading: 0%</div>
             </div>
-            <div class="modal-body">
-                <div class="avatar-creation-tabs">
-                    <button class="tab-btn active" onclick="switchTab('upload')">Upload Photo</button>
-                    <button class="tab-btn" onclick="switchTab('readyplayer')">Ready Player Me</button>
-                    <button class="tab-btn" onclick="switchTab('preset')">Preset Avatars</button>
-                </div>
-                
-                <!-- Photo Upload Tab -->
-                <div id="upload-tab" class="tab-content active">
-                    <div class="upload-section">
-                        <div class="upload-area" id="upload-area">
-                            <div class="upload-icon">📷</div>
-                            <p>Click to upload your photo</p>
-                            <p class="upload-hint">JPG, PNG up to 5MB</p>
-                            <input type="file" id="photo-upload" accept="image/*" style="display: none;">
-                        </div>
-                        <div class="uploaded-photo hidden" id="uploaded-photo">
-                            <img id="photo-preview" src="" alt="Uploaded photo">
-                            <button class="btn btn--outline btn--sm" onclick="removePhoto()">Remove</button>
-                        </div>
-                    </div>
-                    
-                    <!-- AI Avatar Generation Options -->
-                    <div class="ai-generation-options">
-                        <h4>AI Avatar Generation</h4>
-                        <div class="generation-modes">
-                            <label class="radio-option">
-                                <input type="radio" name="generation-mode" value="realistic" checked>
-                                <span>Realistic (Matches your photo exactly)</span>
-                            </label>
-                            <label class="radio-option">
-                                <input type="radio" name="generation-mode" value="stylized">
-                                <span>Stylized (Artistic version)</span>
-                            </label>
-                            <label class="radio-option">
-                                <input type="radio" name="generation-mode" value="cartoon">
-                                <span>Cartoon (Fun animated style)</span>
-                            </label>
-                        </div>
-                        
-                        <!-- Advanced Customization -->
-                        <div class="customization-options">
-                            <h5>Customization Options</h5>
-                            <div class="option-row">
-                                <label>Hair Color:</label>
-                                <select id="hair-color" class="form-control">
-                                    <option value="auto">Auto (from photo)</option>
-                                    <option value="black">Black</option>
-                                    <option value="brown">Brown</option>
-                                    <option value="blonde">Blonde</option>
-                                    <option value="red">Red</option>
-                                    <option value="gray">Gray</option>
-                                </select>
-                            </div>
-                            <div class="option-row">
-                                <label>Eye Color:</label>
-                                <select id="eye-color" class="form-control">
-                                    <option value="auto">Auto (from photo)</option>
-                                    <option value="brown">Brown</option>
-                                    <option value="blue">Blue</option>
-                                    <option value="green">Green</option>
-                                    <option value="hazel">Hazel</option>
-                                </select>
-                            </div>
-                            <div class="option-row">
-                                <label>Skin Tone:</label>
-                                <select id="skin-tone" class="form-control">
-                                    <option value="auto">Auto (from photo)</option>
-                                    <option value="light">Light</option>
-                                    <option value="medium">Medium</option>
-                                    <option value="dark">Dark</option>
-                                </select>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label class="form-label">Avatar Name</label>
-                        <input type="text" id="avatar-name" class="form-control" placeholder="Enter your name" value="Student">
-                    </div>
-                    
-                    <div class="generation-status" id="generation-status">
-                        <p id="status-text">Ready to generate your avatar!</p>
-                    </div>
-                    
-                    <button class="btn btn--primary" onclick="generateAvatarFromPhoto()" id="generate-btn">
-                        <span id="generate-text">Generate Avatar Instantly</span>
-                    </button>
-                </div>
-
-                <!-- Ready Player Me Tab -->
-                <div id="readyplayer-tab" class="tab-content">
-                    <div class="readyplayer-section">
-                        <h4>🎭 Ready Player Me Avatar Creator</h4>
-                        <p>Create high-quality, realistic avatars using Ready Player Me's advanced system.</p>
-                        
-                        <div class="readyplayer-integration">
-                            <div class="integration-info">
-                                <h5>✨ Features Available:</h5>
-                                <ul>
-                                    <li>🎨 Advanced avatar customization</li>
-                                    <li>👤 Realistic human-like avatars</li>
-                                    <li>👕 Clothing and accessories</li>
-                                    <li>🎭 Facial expressions and emotions</li>
-                                    <li>💄 Hair, makeup, and styling options</li>
-                                </ul>
-                            </div>
-                            
-                            <div class="avatar-preview-section">
-                                <h5>Your Avatar Preview:</h5>
-                                <div id="readyplayer-preview" class="avatar-preview-container">
-                                    <div class="preview-placeholder">
-                                        <p>Create your avatar to see preview</p>
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <div class="readyplayer-actions">
-                                <button class="btn btn--primary btn--large" onclick="openReadyPlayerMeCreator()">
-                                    🎨 Create Avatar with Ready Player Me
-                                </button>
-                                <button class="btn btn--secondary" onclick="loadSampleAvatars()">
-                                    👥 Browse Sample Avatars
-                                </button>
-                            </div>
-                            
-                            <div class="form-group">
-                                <label class="form-label">Avatar Name</label>
-                                <input type="text" id="avatar-name-rpm" class="form-control" placeholder="Enter your name" value="Student">
-                            </div>
-                            
-                            <div class="form-group">
-                                <label class="form-label">Ready Player Me Avatar URL (Optional)</label>
-                                <input type="url" id="readyplayer-url" class="form-control" placeholder="Paste your Ready Player Me avatar URL here">
-                                <small class="form-hint">If you already have a Ready Player Me avatar, paste the URL here</small>
-                            </div>
-                            
-                            <button class="btn btn--primary" onclick="loadReadyPlayerAvatar()" id="load-readyplayer-btn" disabled>
-                                🚀 Use This Avatar
-                            </button>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Preset Avatars Tab -->
-                <div id="preset-tab" class="tab-content">
-                    <!-- Leaderboard Section -->
-                    <div class="leaderboard-section">
-                        <h4>🏆 Leaderboard & Unlocked Avatars</h4>
-                        <div class="score-display">
-                            <span class="score-label">Your Score:</span>
-                            <span class="score-value" id="user-score">0</span>
-                            <span class="score-info">points</span>
-                        </div>
-                        <div class="leaderboard-preview">
-                            <div class="leaderboard-item">
-                                <span class="rank">1st</span>
-                                <span class="name">Alex</span>
-                                <span class="score">2,450</span>
-                            </div>
-                            <div class="leaderboard-item">
-                                <span class="rank">2nd</span>
-                                <span class="name">Jordan</span>
-                                <span class="score">2,100</span>
-                            </div>
-                            <div class="leaderboard-item current-user">
-                                <span class="rank">3rd</span>
-                                <span class="name">You</span>
-                                <span class="score">1,850</span>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="preset-avatars">
-                        <h4>Available Avatars</h4>
-                        <div class="preset-grid">
-                            <!-- Basic Avatars (Always Available) -->
-                            <div class="preset-avatar available" data-preset="male1" onclick="selectPreset('male1')">
-                                <div class="preset-preview">👨</div>
-                                <span>Male 1</span>
-                                <div class="unlock-status">✓ Available</div>
-                            </div>
-                            <div class="preset-avatar available" data-preset="female1" onclick="selectPreset('female1')">
-                                <div class="preset-preview">👩</div>
-                                <span>Female 1</span>
-                                <div class="unlock-status">✓ Available</div>
-                            </div>
-                            <div class="preset-avatar available" data-preset="male2" onclick="selectPreset('male2')">
-                                <div class="preset-preview">🧑</div>
-                                <span>Male 2</span>
-                                <div class="unlock-status">✓ Available</div>
-                            </div>
-                            <div class="preset-avatar available" data-preset="female2" onclick="selectPreset('female2')">
-                                <div class="preset-preview">👩‍💼</div>
-                                <span>Female 2</span>
-                                <div class="unlock-status">✓ Available</div>
-                            </div>
-                            
-                            <!-- Premium Avatars (Unlockable) -->
-                            <div class="preset-avatar locked" data-preset="ninja" onclick="selectPreset('ninja')">
-                                <div class="preset-preview">🥷</div>
-                                <span>Ninja</span>
-                                <div class="unlock-status">🔒 500 pts</div>
-                            </div>
-                            <div class="preset-avatar locked" data-preset="robot" onclick="selectPreset('robot')">
-                                <div class="preset-preview">🤖</div>
-                                <span>Robot</span>
-                                <div class="unlock-status">🔒 750 pts</div>
-                            </div>
-                            <div class="preset-avatar locked" data-preset="wizard" onclick="selectPreset('wizard')">
-                                <div class="preset-preview">🧙‍♂️</div>
-                                <span>Wizard</span>
-                                <div class="unlock-status">🔒 1000 pts</div>
-                            </div>
-                            <div class="preset-avatar locked" data-preset="superhero" onclick="selectPreset('superhero')">
-                                <div class="preset-preview">🦸‍♂️</div>
-                                <span>Superhero</span>
-                                <div class="unlock-status">🔒 1500 pts</div>
-                            </div>
-                            
-                            <!-- Legendary Avatars (High Score Required) -->
-                            <div class="preset-avatar locked" data-preset="dragon" onclick="selectPreset('dragon')">
-                                <div class="preset-preview">🐉</div>
-                                <span>Dragon</span>
-                                <div class="unlock-status">🔒 2000 pts</div>
-                            </div>
-                            <div class="preset-avatar locked" data-preset="phoenix" onclick="selectPreset('phoenix')">
-                                <div class="preset-preview">🔥</div>
-                                <span>Phoenix</span>
-                                <div class="unlock-status">🔒 2500 pts</div>
-                            </div>
-                            <div class="preset-avatar locked" data-preset="cosmic" onclick="selectPreset('cosmic')">
-                                <div class="preset-preview">🌌</div>
-                                <span>Cosmic</span>
-                                <div class="unlock-status">🔒 3000 pts</div>
-                            </div>
-                            <div class="preset-avatar locked" data-preset="legendary" onclick="selectPreset('legendary')">
-                                <div class="preset-preview">👑</div>
-                                <span>Legendary</span>
-                                <div class="unlock-status">🔒 5000 pts</div>
-                            </div>
-                        </div>
-                        
-                        <!-- Avatar Customization -->
-                        <div class="avatar-customization">
-                            <h5>Customize Selected Avatar</h5>
-                            <div class="customization-controls">
-                                <div class="control-group">
-                                    <label>Color Theme:</label>
-                                    <div class="color-palette">
-                                        <div class="color-option" data-color="blue" style="background: #4a90e2;"></div>
-                                        <div class="color-option" data-color="red" style="background: #e24a90;"></div>
-                                        <div class="color-option" data-color="green" style="background: #2ecc71;"></div>
-                                        <div class="color-option" data-color="purple" style="background: #9b59b6;"></div>
-                                        <div class="color-option" data-color="gold" style="background: #f39c12;"></div>
-                                    </div>
-                                </div>
-                                <div class="control-group">
-                                    <label>Size:</label>
-                                    <input type="range" id="avatar-size" min="0.8" max="1.2" step="0.1" value="1.0">
-                                    <span id="size-value">1.0x</span>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div class="form-group">
-                            <label class="form-label">Avatar Name</label>
-                            <input type="text" id="avatar-name-preset" class="form-control" placeholder="Enter your name" value="Student">
-                        </div>
-                        <button class="btn btn--primary" onclick="usePresetAvatar()">Use This Avatar</button>
-                    </div>
-                </div>
-
-                <div class="avatar-preview">
-                    <div id="avatar-preview-canvas" style="width: 200px; height: 300px; margin: 20px auto; background: var(--color-bg-2); border-radius: var(--radius-lg);"></div>
+        </div>
+        
+        <!-- Game UI -->
+        <div id="game-ui">
+            <div class="top-bar">
+                <button id="mic-toggle" class="ui-btn">
+                    <i class="fas fa-microphone"></i>
+                </button>
+                <button id="screen-share" class="ui-btn">
+                    <i class="fas fa-desktop"></i>
+                </button>
+                <button id="chat-toggle" class="ui-btn">
+                    <i class="fas fa-comments"></i>
+                </button>
+                <button id="exit-room" class="ui-btn" onclick="exitRoom()">
+                    <i class="fas fa-sign-out-alt"></i>
+                </button>
+            </div>
+            
+            <div id="chat-panel" class="side-panel" style="display: none;">
+                <div id="chat-messages"></div>
+                <div class="chat-input-container">
+                    <input type="text" id="chat-input" placeholder="Type a message...">
+                    <button onclick="sendMessage()">Send</button>
                 </div>
             </div>
-            <div class="modal-footer">
-                <button class="btn btn--primary" onclick="enterRoom()" id="enter-room-btn" disabled>Enter Room</button>
+        </div>
+
+    </div>
+
             </div>
         </div>
     </div>
+
+    <!-- Avatar Selection Modal -->
+    <div id="avatar-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Choose Your Avatar</h2>
+                <span id="current-room-name" class="room-name"></span>
+                <!-- No close button to prevent accidental closing -->
+            </div>
+            
+            <div class="modal-body">
+            <div class="avatar-creation-tabs">
+                <button class="tab-btn active" data-tab="preset-tab">Preset Avatars</button>
+                <button class="tab-btn" data-tab="upload-tab">Upload Photo</button>
+                <button class="tab-btn" data-tab="ready-tab">Ready Player Me</button>
+                <button class="tab-btn" data-tab="avaturn-tab">Create with Avaturn</button>
+            </div>            <!-- Preset Avatars Tab -->
+            <div id="preset-tab" class="tab-content" style="display: block;">
+                <div class="avatar-grid">
+                    <!-- 3D Model Avatars -->
+                    <div class="avatar-preset" data-preset="3d-male1" data-model="assets/3d-avatars/male-business.glb" onclick="selectPreset3D('assets/3d-avatars/male-business.glb')">
+                        <img src="assets/3d-avatars/male-business.png" alt="3D Male Business">
+                        <span>3D Business Male</span>
+                        <div class="model-badge">3D</div>
+                    </div>
+                    <div class="avatar-preset" data-preset="3d-female1" data-model="assets/3d-avatars/female-business.glb" onclick="selectPreset3D('assets/3d-avatars/female-business.glb')">
+                        <img src="assets/3d-avatars/female-business.png" alt="3D Female Business">
+                        <span>3D Business Female</span>
+                        <div class="model-badge">3D</div>
+                    </div>
+                    <div class="avatar-preset" data-preset="3d-male2" data-model="assets/3d-avatars/male-casual.glb" onclick="selectPreset3D('assets/3d-avatars/male-casual.glb')">
+                        <img src="assets/3d-avatars/male-casual.png" alt="3D Male Casual">
+                        <span>3D Casual Male</span>
+                        <div class="model-badge">3D</div>
+                    </div>
+                    <div class="avatar-preset" data-preset="3d-female2" data-model="assets/3d-avatars/female-casual.glb" onclick="selectPreset3D('assets/3d-avatars/female-casual.glb')">
+                        <img src="assets/3d-avatars/female-casual.png" alt="3D Female Casual">
+                        <span>3D Casual Female</span>
+                        <div class="model-badge">3D</div>
+                    </div>
+                    
+                    <!-- Classic 2D Avatars -->
+                    <div class="avatar-preset" data-preset="male1" onclick="selectPreset('male1')">
+                        <img src="assets/avatars/male1.svg" alt="Male Avatar 1">
+                        <span>Classic Male 1</span>
+                        <div class="model-badge">2D</div>
+                    </div>
+                    <div class="avatar-preset" data-preset="female1" onclick="selectPreset('female1')">
+                        <img src="assets/avatars/female1.svg" alt="Female Avatar 1">
+                        <span>Classic Female 1</span>
+                        <div class="model-badge">2D</div>
+                    </div>
+                    <div class="avatar-preset" data-preset="male2" onclick="selectPreset('male2')">
+                        <img src="assets/avatars/male2.svg" alt="Male Avatar 2">
+                        <span>Classic Male 2</span>
+                        <div class="model-badge">2D</div>
+                    </div>
+                    <div class="avatar-preset" data-preset="female2" onclick="selectPreset('female2')">
+                        <img src="assets/avatars/female2.svg" alt="Female Avatar 2">
+                        <span>Classic Female 2</span>
+                        <div class="model-badge">2D</div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Upload Photo Tab -->
+            <div id="upload-tab" class="tab-content">
+                <div class="upload-container">
+                    <div id="upload-area" class="upload-area">
+                        <div class="upload-icon">
+                            <i class="fas fa-cloud-upload-alt"></i>
+                        </div>
+                        <p>Click or drag photo here</p>
+                        <p class="upload-hint">JPG or PNG, max 5MB</p>
+                    </div>
+                    <input type="file" id="photo-upload" accept="image/*" style="display: none;">
+                    
+                    <div id="uploaded-photo" class="hidden">
+                        <img id="photo-preview" src="" alt="Uploaded photo">
+                        <button class="btn btn--outline" onclick="removePhoto()">Remove Photo</button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Avaturn Tab -->
+            <div id="avaturn-tab" class="tab-content">
+                <div class="avaturn-container">
+                    <div class="avaturn-info">
+                        <h3>Upload Your Avaturn 3D Model</h3>
+                        <p>Upload your custom 3D avatar created with Avaturn.</p>
+                        <div class="avaturn-upload-area" id="avaturn-upload-area">
+                            <input type="file" id="avaturn-file" accept=".glb" style="display: none;">
+                            <div class="upload-content">
+                                <i class="fas fa-cube upload-icon"></i>
+                                <h4>Upload 3D Model</h4>
+                                <p>Drag and drop your .GLB file here<br>or click to browse</p>
+                                <p class="file-hint">Accepts .GLB files from Avaturn</p>
+                            </div>
+                        </div>
+                        <div class="upload-instructions">
+                            <h4>How to use:</h4>
+                            <ol>
+                                <li>Create your avatar on <a href="https://avaturn.me" target="_blank">Avaturn</a></li>
+                                <li>Download the GLB file from Avaturn</li>
+                                <li>Upload the GLB file here</li>
+                            </ol>
+                        </div>
+                    </div>
+                    <div class="avaturn-room-select" style="margin-bottom: 20px;">
+                            <label for="avaturn-room">Choose Room:</label>
+                            <select id="avaturn-room" style="margin-left: 10px; padding: 6px 12px; border-radius: 6px;">
+                                <option value="innovation-lab">Innovation Lab</option>
+                                <option value="career-hall">Career Hall</option>
+                                <option value="mentor-room">Mentor Room</option>
+                            </select>
+                        </div>
+                    <div id="avaturn-preview" class="avaturn-preview">
+                        <div class="preview-placeholder">
+                            <i class="fas fa-user-circle"></i>
+                            <p>Your 3D avatar preview will appear here</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Ready Player Me Tab -->
+            <div id="ready-tab" class="tab-content">
+                <div class="ready-player-me">
+                    <div class="rpm-info">
+                        <h3>Create Your 3D Avatar</h3>
+                        <p>Design a personalized avatar using Ready Player Me's advanced creator.</p>
+                        <ul class="rpm-features">
+                            <li>Realistic 3D avatars</li>
+                            <li>Full body customization</li>
+                            <li>Multiple style options</li>
+                            <li>Facial features control</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="rpm-link-input">
+                        <h4>Have an avatar link?</h4>
+                        <div class="input-group">
+                            <input type="text" id="rpm-avatar-link" placeholder="Paste your Ready Player Me avatar link here">
+                            <button class="btn btn--secondary" onclick="loadAvatarFromLink()">Load Avatar</button>
+                        </div>
+                        <p class="hint">Example: https://models.readyplayer.me/...glb</p>
+                    </div>
+
+                    <div class="rpm-divider">
+                        <span>OR</span>
+                    </div>
+                    
+                    <div id="readyplayer-preview" class="rpm-preview">
+                        <p>Create your avatar to see preview</p>
+                    </div>
+                    
+                    <button class="btn btn--primary" onclick="openReadyPlayerMe()">
+                        Create New Avatar with Ready Player Me
+                    </button>
+                </div>
+            </div>
+            
+            <div class="modal-footer">
+                <button id="enter-room-btn" class="enter-room-btn" disabled>
+                    Enter Room with Selected Avatar
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Dashboard -->
 
     <!-- 3D Environment -->
     <div id="metaverse-space" class="metaverse-space hidden">
@@ -435,14 +370,6 @@
             </div>
         </div>
 
-        <!-- Loading Screen -->
-        <div id="loading-screen" class="loading-screen">
-            <div class="loading-content">
-                <div class="loading-spinner"></div>
-                <p>Loading 3D environment...</p>
-            </div>
-        </div>
-
         <!-- Screen Share Display -->
         <div id="shared-screen" class="shared-screen hidden">
             <div class="shared-screen-header">
@@ -452,7 +379,25 @@
             <video id="shared-screen-video" autoplay></video>
         </div>
     </div>
-
-    <script src="app.js"></script>
+    
+    <script src="notifications.js"></script>
+    <script src="avatar-system.js"></script>
+    <script src="environment.js"></script>
+    <script src="app_clean_v2.js"></script>
+    
+    <!-- Game Controls Help -->
+    <div id="controls-help" class="controls-help hidden">
+        <div class="controls-content">
+            <h3>Controls</h3>
+            <ul>
+                <li><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> - Move</li>
+                <li><kbd>SHIFT</kbd> - Run</li>
+                <li><kbd>SPACE</kbd> - Jump</li>
+                <li><kbd>ESC</kbd> - Menu</li>
+                <li>Mouse - Look around</li>
+            </ul>
+            <button onclick="hideControlsHelp()" class="btn btn--primary">Got it!</button>
+        </div>
+    </div>
 </body>
 </html>

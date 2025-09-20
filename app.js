@@ -1,62 +1,11 @@
-// Global variables
-let scene, camera, renderer, avatar, currentRoom = null;
-let isMoving = false;
-let keys = {};
-let mouseX = 0, mouseY = 0;
-let avatarMixer = null;
-let walkAnimation = null;
-let idleAnimation = null;
-let mediaStream = null;
-let peerConnection = null;
-let isMicMuted = false;
-let isScreenSharing = false;
-let chatMessages = [];
+// Global variables for Three.js
+// Global variables for Three.js
+let scene = null;
+let renderer = null;
+let camera = null;
+let collidableObjects = [];
 
-// Avatar and camera system
-let currentAvatar = null;
-let avatarData = {
-    type: 'preset',
-    url: null,
-    name: 'Student',
-    preset: 'male1'
-};
-let cameraMode = 'third-person'; // 'first-person', 'third-person', 'free-look'
-let cameraControls = {
-    distance: 8,
-    height: 3,
-    angle: 0
-};
-let isPointerLocked = false;
-let mouseSensitivity = 0.002;
-
-// Multiplayer system
-let otherAvatars = [];
-let userCount = 1;
-
-// Leaderboard and scoring system
-let userScore = 1850; // Demo score
-let unlockedAvatars = ['male1', 'female1', 'male2', 'female2']; // Always unlocked
-let avatarUnlockRequirements = {
-    'ninja': 500,
-    'robot': 750,
-    'wizard': 1000,
-    'superhero': 1500,
-    'dragon': 2000,
-    'phoenix': 2500,
-    'cosmic': 3000,
-    'legendary': 5000
-};
-
-// Avatar customization
-let selectedColor = 'blue';
-let selectedSize = 1.0;
-
-// Ready Player Me API configuration
-const READY_PLAYER_ME_API_KEY = 'YOUR_API_KEY_HERE'; // Replace with your actual API key
-const READY_PLAYER_ME_BASE_URL = 'https://api.readyplayer.me/v1';
-const READY_PLAYER_ME_AVATAR_URL = 'https://rohan-im0x30.readyplayer.me/avatar/choose';
-
-// Room data
+// Room data (added from app_1.js for environment rendering)
 const roomData = {
     'mentor-room': {
         name: 'Mentor Room',
@@ -78,134 +27,527 @@ const roomData = {
     }
 };
 
-// Initialize application
-document.addEventListener('DOMContentLoaded', function() {
-    console.log('Metaverse Hub initialized');
-    console.log('THREE.js available:', !!window.THREE);
-    console.log('GLTFLoader available:', !!(window.THREE && THREE.GLTFLoader));
-    setupEventListeners();
-    setupRoomButtons();
-    addSystemMessage('Welcome to Metaverse Hub! Select a room to begin.');
-});
+const PHYSICS_CONFIG = {
+    collisionDistance: 1.0,
+    avatarRadius: 0.5,
+    avatarHeight: 2.0
+};
 
-// Setup room selection buttons
-function setupRoomButtons() {
-    const enterButtons = document.querySelectorAll('button[onclick*="selectRoom"]');
-    enterButtons.forEach(button => {
-        button.removeAttribute('onclick');
-        const roomId = button.closest('.room-card').getAttribute('data-room');
-        button.addEventListener('click', function(e) {
-            e.preventDefault();
-            e.stopPropagation();
-            selectRoom(roomId);
-        });
-    });
+const AVATAR_ASSETS = {
+    'male1': 'assets/avatars/male1.svg',
+    'female1': 'assets/avatars/female1.svg',
+    'male2': 'assets/avatars/male2.svg',
+    'female2': 'assets/avatars/female2.svg'
+};
+
+const AppState = {
+    scene: null,
+    camera: null,
+    renderer: null,
+    currentRoom: null,
+    selectedAvatar: null,
+    avatar: null,
+    selectedRoom: null,
+    // Add other valid properties as needed
+    }
+
+// Utility to get UI elements
+const elements = {
+    dashboard: document.getElementById('dashboard'),
+    avatarModal: document.getElementById('avatar-modal'),
+    enterRoomBtn: document.getElementById('enter-room-btn'),
+    roomName: document.getElementById('current-room-name')
+};
+
+function showErrorNotification(message) {
+    console.log('[DEBUG] Showing error notification:', message);
+    const notification = document.createElement('div');
+    notification.className = 'notification error';
+    notification.innerHTML = `
+        <i class="fas fa-exclamation-circle"></i>
+        <span>${message}</span>
+    `;
+    document.body.appendChild(notification);
+    setTimeout(() => {
+        notification.remove();
+    }, 3000);
 }
 
-// Event Listeners
-function setupEventListeners() {
-    // Movement controls
-    document.addEventListener('keydown', onKeyDown);
-    document.addEventListener('keyup', onKeyUp);
-    document.addEventListener('mousemove', onMouseMove);
-    
-    // Pointer lock events
-    document.addEventListener('pointerlockchange', onPointerLockChange);
-    document.addEventListener('pointerlockerror', onPointerLockError);
-    
-    // Mouse click events for interaction
-    document.addEventListener('click', onMouseClick);
-    
-    // UI controls setup - will be activated when in 3D mode
-    const micToggle = document.getElementById('mic-toggle');
-    const screenShare = document.getElementById('screen-share');
-    const chatToggle = document.getElementById('chat-toggle');
-    
-    if(micToggle) micToggle.addEventListener('click', toggleMicrophone);
-    if(screenShare) screenShare.addEventListener('click', toggleScreenShare);
-    if(chatToggle) chatToggle.addEventListener('click', toggleChat);
-    
-    // Chat input
-    const chatInput = document.getElementById('chat-input');
-    if(chatInput) chatInput.addEventListener('keypress', handleChatInput);
-    
-    // Window resize
-    window.addEventListener('resize', onWindowResize);
-}
-
-// Room selection - Fixed function
-function selectRoom(roomId) {
-    console.log('Selecting room:', roomId);
-    currentRoom = roomId;
-    showAvatarModal();
-}
-
-// Global functions for HTML onclick handlers
-window.selectRoom = selectRoom;
-window.closeAvatarModal = closeAvatarModal;
-window.enterRoom = enterRoom;
-window.exitRoom = exitRoom;
-window.switchRoom = switchRoom;
-window.toggleChat = toggleChat;
-window.sendMessage = sendMessage;
-window.handleChatInput = handleChatInput;
-window.stopScreenShare = stopScreenShare;
-
-// Avatar creation functions
-window.switchTab = switchTab;
-window.generateAvatarFromPhoto = generateAvatarFromPhoto;
-window.openReadyPlayerMe = openReadyPlayerMe;
-window.loadReadyPlayerAvatar = loadReadyPlayerAvatar;
-window.selectPreset = selectPreset;
-window.usePresetAvatar = usePresetAvatar;
-window.removePhoto = removePhoto;
-window.setCameraView = setCameraView;
-
-function showAvatarModal() {
-    console.log('Showing avatar modal');
-    const modal = document.getElementById('avatar-modal');
-    if(modal) {
-        modal.classList.remove('hidden');
-        // Initialize avatar preview
-        setTimeout(() => initAvatarPreview(), 100);
-        // Setup file upload
-        setupFileUpload();
-        // Setup avatar customization
-        setupAvatarCustomization();
-        // Update score display
-        updateScoreDisplay();
-        // Update avatar availability
-        updateAvatarAvailability();
+function animateAvatarMovement(isMoving, isRunning) {
+    if (!AppState.avatar) return;
+    if (isMoving) {
+        if (isRunning) {
+            playAnimation('run');
+        } else {
+            playAnimation('walk');
+        }
     } else {
-        console.error('Avatar modal not found');
+        playAnimation('idle');
+    // removed extra closing brace
+}
+
+function playAnimation(animationName) {
+    if (AppState.animations && AppState.animations[animationName] && AppState.animations.mixer) {
+        AppState.animations.mixer.stopAllAction();
+        const action = AppState.animations.mixer.clipAction(AppState.animations[animationName]);
+        action.play();
+    // removed extra closing brace
+}
+
+
+
+
+// Animation and physics variables
+const animations = {
+    mixer: null,
+    walk: null,
+    idle: null
+};
+
+// Input state
+const inputState = {
+    keys: {},
+    mouseX: 0,
+    mouseY: 0,
+    // Communication state
+    peerConnection: null,
+    mediaStream: null,
+    isMicMuted: false,
+    isScreenSharing: false,
+    chatMessages: []
+};
+
+    // Physics and collision detection state
+
+    const physics = {        collidableObjects: [],
+
+    raycaster: new THREE.Raycaster()        }
+
+    // Avatar selection function}
+
+function selectPreset(presetId) {
+
+    console.log('[DEBUG] Selecting preset avatar:', presetId);// Initialize error handlers
+
+    window.addEventListener('error', (event) => {
+
+    try {    handleError(event.error, 'Uncaught error');
+
+        // Validate preset});
+
+        if (!presetId || !AVATAR_ASSETS[presetId]) {
+
+
+// Avatar preset selection
+function selectAvatarPreset(presetId) {
+    if (!presetId || !AVATAR_ASSETS[presetId]) {
+        throw new Error('Invalid avatar preset');
+    }
+    AppState.selectedAvatar = {
+        type: 'preset',
+        id: presetId,
+        url: AVATAR_ASSETS[presetId]
+    };
+    // Update selection visuals
+    const presets = document.querySelectorAll('.avatar-preset');
+    presets.forEach(preset => {
+        preset.classList.toggle('selected', preset.getAttribute('data-preset') === presetId);
+    });
+    // Enable enter button
+    const enterRoomBtn = document.getElementById('enter-room-btn');
+    if (enterRoomBtn) {
+        enterRoomBtn.disabled = false;
+    }
+    console.log('[DEBUG] Avatar selected successfully:', presetId);
+}
+
+// Animation loop
+function animate() {
+    requestAnimationFrame(animate);
+    updateAvatarPosition();
+    if (AppState.renderer && AppState.scene && AppState.camera) {
+        AppState.renderer.render(AppState.scene, AppState.camera);
     }
 }
 
-// Avatar Creation Functions
-function switchTab(tabName) {
-    // Hide all tabs
-    document.querySelectorAll('.tab-content').forEach(tab => {
-        tab.classList.remove('active');
-    });
-    
-    // Remove active class from all buttons
-    document.querySelectorAll('.tab-btn').forEach(btn => {
-        btn.classList.remove('active');
-    });
-    
-    // Show selected tab
-    const selectedTab = document.getElementById(tabName + '-tab');
-    const selectedBtn = document.querySelector(`[onclick="switchTab('${tabName}')"]`);
-    
-    if(selectedTab) selectedTab.classList.add('active');
-    if(selectedBtn) selectedBtn.classList.add('active');
+// Input handlers
+function onKeyDown(event) {
+    inputState.keys[event.code] = true;
 }
 
+function onKeyUp(event) {
+    inputState.keys[event.code] = false;
+}
+
+function onMouseMove(event) {
+    if (AppState.isPointerLocked) {
+        inputState.mouseX = event.movementX || 0;
+        inputState.mouseY = event.movementY || 0;
+    } else {
+        inputState.mouseX = (event.clientX / window.innerWidth) * 2 - 1;
+        inputState.mouseY = -(event.clientY / window.innerHeight) * 2 + 1;
+    }
+}
+
+// Animation and physics variables
+const animations = {
+    mixer: null,
+    walk: null,
+    idle: null
+};
+
+// Input state
+const inputState = {
+    keys: {},
+    mouseX: 0,
+    mouseY: 0,
+    isScreenSharing: false,
+    chatMessages: []
+};
+
+// Update avatar position
+function updateAvatarPosition() {
+    if (!AppState.avatar) return;
+    const moveSpeed = 0.1;
+    // ...existing code for movement...
+    AppState.camera.position.z = AppState.avatar.position.z + 5;
+    AppState.camera.lookAt(AppState.avatar.position);
+}
+
+// Physics and collision detection state
+const physics = {
+    collidableObjects: [],
+    raycaster: new THREE.Raycaster()
+};
+
+function checkCollision(position) {
+    for (let object of physics.collidableObjects) {
+        if (!object.geometry || !object.geometry.boundingBox) {
+            object.geometry.computeBoundingBox();
+        }
+        const worldBox = object.geometry.boundingBox.clone();
+        worldBox.applyMatrix4(object.matrixWorld);
+        // ...collision logic...
+    }
+}
+
+    collidableObjects = [];
+    scene.traverse((object) => {
+        if (object.isMesh && (
+            object.name.includes('wall') ||
+            object.name.includes('furniture') ||
+            object.name.includes('table') ||
+            object.name.includes('chair') ||
+            object.name.includes('desk')
+        )) {
+            if (!object.geometry.boundingBox) {
+                object.geometry.computeBoundingBox();
+            }
+            collidableObjects.push(object);
+        }
+    });
+    console.log('Collision objects initialized:', collidableObjects.length);
+}
+
+function enterRoom() {
+    console.log('[DEBUG] Attempting to enter room');
+    try {
+        if (!AppState.selectedRoom) {
+            throw new Error('No room selected');
+        }
+        if (!AppState.selectedAvatar) {
+            throw new Error('No avatar selected');
+        }
+        // Hide modal and show loading screen
+        const avatarModal = document.getElementById('avatar-modal');
+        const loadingScreen = document.getElementById('loading-screen');
+        const gameContainer = document.getElementById('game-container');
+        if (avatarModal) avatarModal.style.display = 'none';
+        if (loadingScreen) loadingScreen.style.display = 'block';
+        // Initialize 3D environment
+        setup3DEnvironment().then(() => {
+            // Hide loading screen and start animation
+            if (loadingScreen) loadingScreen.style.display = 'none';
+            animate();
+            console.log('[DEBUG] Room entry complete');
+        }).catch(error => {
+            console.error('[ERROR] Failed to enter room:', error);
+            showErrorNotification('Failed to enter room. Please try again.');
+        });
+    } catch (error) {
+        console.error('[ERROR] Failed to enter room:', error);
+        showErrorNotification('Failed to enter room. Please try again.');
+    }
+}
+
+            // Reset UI state        if (!presetId || !AVATAR_ASSETS[presetId]) {
+
+            throw new Error('Invalid avatar preset');
+
+    if (avatarModal) avatarModal.style.display = 'block';
+    if (loadingScreen) loadingScreen.style.display = 'none';
+    if (gameContainer) gameContainer.style.display = 'none';
+
+// Debug logging function
+function log(context, message, type = 'info') {
+    if (!window.DEBUG) return;
+    const timestamp = new Date().toISOString();
+    const prefix = `[${timestamp}] [${type.toUpperCase()}] [${context}]`;
+    switch (type) {
+        case 'error':
+            console.error(prefix, message);
+            break;
+        case 'warn':
+            console.warn(prefix, message);
+            break;
+        case 'debug':
+            console.debug(prefix, message);
+            break;
+        default:
+            console.log(prefix, message);
+    }
+}
+
+// Camera and controls
+let cameraMode = 'third-person'; // 'first-person', 'third-person', 'free-look'
+let cameraControls = {
+    distance: 8,
+    height: 3,
+    angle: 0
+};
+let isPointerLocked = false;
+let mouseSensitivity = 0.002;
+
+// Multiplayer system
+let otherAvatars = [];
+let userCount = 1;
+
+// Three.js initialization
+function initializeThreeJS() {
+    console.log('[DEBUG] Initializing Three.js');
+    try {
+        // Create new scene
+        AppState.scene = new THREE.Scene();
+        console.log('[DEBUG] Scene created');
+        // Initialize camera
+        AppState.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        AppState.camera.position.set(0, 2, 5);
+        AppState.camera.lookAt(0, 0, 0);
+        console.log('[DEBUG] Camera initialized');
+        // Initialize renderer
+        const canvas = document.getElementById('three-canvas');
+        if (!canvas) {
+            throw new Error('Could not find canvas element');
+        }
+        AppState.renderer = new THREE.WebGLRenderer({
+            canvas: canvas,
+            antialias: true
+        });
+        AppState.renderer.setSize(window.innerWidth, window.innerHeight);
+        AppState.renderer.setPixelRatio(window.devicePixelRatio);
+        console.log('[DEBUG] Renderer initialized');
+        // Add basic lighting
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+        AppState.scene.add(ambientLight);
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        directionalLight.position.set(10, 10, 10);
+        AppState.scene.add(directionalLight);
+        console.log('[DEBUG] Basic lighting added to scene');
+        console.log('[DEBUG] Three.js initialized successfully');
+        return true;
+    } catch (error) {
+        console.error('[ERROR] Failed to initialize Three.js:', error);
+        return false;
+    }
+}
+
+// Room environment loading
+async function loadRoomEnvironment(roomId) {
+    console.log('[DEBUG] Loading room environment:', roomId);
+    
+    // Add basic room geometry
+    const geometry = new THREE.BoxGeometry(20, 10, 20);
+    const material = new THREE.MeshStandardMaterial({ 
+        color: 0xcccccc,
+        side: THREE.BackSide
+    });
+    const room = new THREE.Mesh(geometry, material);
+    threeScene.add(room);
+    console.log('[DEBUG] Room mesh added to scene');
+    
+    // Add floor
+    const floorGeometry = new THREE.PlaneGeometry(20, 20);
+    const floorMaterial = new THREE.MeshStandardMaterial({ color: 0x999999 });
+    const floor = new THREE.Mesh(floorGeometry, floorMaterial);
+    floor.rotation.x = -Math.PI / 2;
+    floor.position.y = -5;
+    threeScene.add(floor);
+    
+    console.log('[DEBUG] Room environment loaded');
+}
+
+// Avatar loading
+async function loadAvatar(avatarId) {
+    console.log('[DEBUG] Loading avatar:', avatarId);
+    
+    // Create a simple avatar representation for now
+    const geometry = new THREE.CapsuleGeometry(0.5, 1, 4, 8);
+    const material = new THREE.MeshStandardMaterial({ color: 0x0000ff });
+    avatar = new THREE.Mesh(geometry, material);
+    avatar.position.set(0, 0, 0);
+    scene.add(avatar);
+    
+    console.log('[DEBUG] Avatar loaded');
+}
+
+// Controls setup
+function setupControls() {
+    console.log('[DEBUG] Setting up controls');
+    
+    // Add keyboard controls
+    document.addEventListener('keydown', onKeyDown);
+    document.addEventListener('keyup', onKeyUp);
+    
+    // Add mouse controls
+    document.addEventListener('mousemove', onMouseMove);
+    
+    console.log('[DEBUG] Controls setup complete');
+}
+
+// --- BEGIN RESTORED FUNCTIONS FROM app_1.js ---
+function animate() {
+    if(!renderer || !scene || !camera) return;
+    requestAnimationFrame(animate);
+    if(avatarMixer) {
+        avatarMixer.update(0.016);
+    }
+    handleMovement();
+    updateCamera();
+    renderer.render(scene, camera);
+}
+
+function handleMovement() {
+    if(!avatar) return;
+    const moveSpeed = 0.1;
+    let moved = false;
+    if(keys['KeyW'] || keys['ArrowUp']) {
+        avatar.position.z -= moveSpeed;
+        moved = true;
+    }
+    if(keys['KeyS'] || keys['ArrowDown']) {
+        avatar.position.z += moveSpeed;
+        moved = true;
+    }
+    if(keys['KeyA'] || keys['ArrowLeft']) {
+        avatar.position.x -= moveSpeed;
+        moved = true;
+    }
+    if(keys['KeyD'] || keys['ArrowRight']) {
+        avatar.position.x += moveSpeed;
+        moved = true;
+    }
+    if(avatar.position) {
+        avatar.position.x = Math.max(-12, Math.min(12, avatar.position.x));
+        avatar.position.z = Math.max(-12, Math.min(12, avatar.position.z));
+    }
+}
+
+function updateCamera() {
+    if(!avatar || !camera) return;
+    const cameraOffset = new THREE.Vector3(0, 3, 8);
+    if(avatar.position) {
+        camera.position.copy(avatar.position).add(cameraOffset);
+        camera.lookAt(avatar.position);
+    }
+}
+
+function onKeyDown(event) { keys[event.code] = true; }
+function onKeyUp(event) { keys[event.code] = false; }
+function onMouseMove(event) {
+    mouseX = (event.clientX / window.innerWidth) * 2 - 1;
+    mouseY = -(event.clientY / window.innerHeight) * 2 + 1;
+}
+function onWindowResize() {
+    if(!camera || !renderer) return;
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+}
+// --- END RESTORED FUNCTIONS FROM app_1.js ---
+
+// Avatar customization
+let selectedColor = 'blue';
+let selectedSize = 1.0;
+
+// Ready Player Me API configuration
+const READY_PLAYER_ME_API_KEY = 'sk_live_smq3_PPuExzhObQZLVYwt4u4cLO5KQeQVImE'; // Replace with your actual API key
+const READY_PLAYER_ME_BASE_URL = 'https://api.readyplayer.me/v1';
+const READY_PLAYER_ME_AVATAR_URL = 'https://rohan-im0x30.readyplayer.me/avatar/choose';
+
+// Setup Avatar UI components
+// Handle file upload for custom avatar
+// Handle preset avatar selection
+function selectPreset(presetName) {
+    try {
+        if (!AVATAR_ASSETS[presetName]) {
+            throw new Error(`Avatar preset "${presetName}" not found`);
+        }
+
+        const presets = document.querySelectorAll('.avatar-preset');
+        presets.forEach(preset => {
+            preset.classList.remove('selected');
+        });
+        
+        const selectedPreset = document.querySelector(`.avatar-preset[onclick="selectPreset('${presetName}')"]`);
+        if (selectedPreset) {
+            selectedPreset.classList.add('selected');
+            
+            // Save selected avatar
+            selectedAvatar = {
+                type: 'preset',
+                value: presetName
+            };
+            
+            // Enable continue button
+            const continueBtn = document.getElementById('avatar-continue');
+            if (continueBtn) {
+                continueBtn.disabled = false;
+            }
+        } else {
+            throw new Error('Could not find preset element in the DOM');
+        }
+    } catch (error) {
+        console.error('Error selecting preset:', error);
+        showError(error.message);
+    }
+    
+    // Save selected avatar
+    selectedAvatar = {
+        type: 'preset',
+        value: presetName
+    };
+    
+    // Enable continue button
+    const continueBtn = document.getElementById('avatar-continue');
+    if (continueBtn) {
+        continueBtn.disabled = false;
+    }
+}
+
+// Handle file upload for custom avatar
 function setupFileUpload() {
+    // Forward to the consolidated implementation
     const uploadArea = document.getElementById('upload-area');
     const fileInput = document.getElementById('photo-upload');
+    const photoPreview = document.getElementById('photo-preview');
+    const uploadedPhoto = document.getElementById('uploaded-photo');
     
-    if(!uploadArea || !fileInput) return;
+    if (!uploadArea || !fileInput) {
+        console.error('Upload area or file input not found');
+        return;
+    }
+    
+    console.log('Setting up file upload...', {uploadArea, fileInput, photoPreview, uploadedPhoto});
     
     // Click to upload
     uploadArea.addEventListener('click', () => {
@@ -214,6 +556,13 @@ function setupFileUpload() {
     
     // File selection
     fileInput.addEventListener('change', handleFileSelect);
+    
+    // Initialize the upload area
+    uploadArea.innerHTML = `
+        <div class="upload-icon">📷</div>
+        <p>Click to upload your photo</p>
+        <p class="upload-hint">JPG, PNG up to 5MB</p>
+    `;
     
     // Drag and drop
     uploadArea.addEventListener('dragover', (e) => {
@@ -239,6 +588,8 @@ function handleFileSelect(event) {
     const file = event.target.files[0];
     if(!file) return;
     
+    console.log('File selected:', file);
+    
     // Validate file type
     if(!file.type.startsWith('image/')) {
         alert('Please select an image file (JPG, PNG, etc.)');
@@ -258,9 +609,19 @@ function handleFileSelect(event) {
         const photoPreview = document.getElementById('photo-preview');
         const uploadArea = document.getElementById('upload-area');
         
-        if(photoPreview) photoPreview.src = e.target.result;
-        if(uploadedPhoto) uploadedPhoto.classList.remove('hidden');
-        if(uploadArea) uploadArea.style.display = 'none';
+        console.log('Loading preview...', {uploadedPhoto, photoPreview, uploadArea});
+        
+        if(photoPreview) {
+            photoPreview.src = e.target.result;
+            photoPreview.onload = () => {
+                if(uploadedPhoto) uploadedPhoto.classList.remove('hidden');
+                if(uploadArea) uploadArea.classList.add('hidden');
+            };
+        }
+    };
+    reader.onerror = (error) => {
+        console.error('Error reading file:', error);
+        alert('Error reading the file. Please try again.');
     };
     reader.readAsDataURL(file);
 }
@@ -487,9 +848,24 @@ function addPhotoTextureToAvatar(avatar, photoSrc) {
         const material = new THREE.MeshLambertMaterial({ 
             map: texture,
             transparent: true,
-            opacity: 0.8
+            opacity: 0.8,
+            side: THREE.DoubleSide
         });
         avatar.material = material;
+        
+        // Add a subtle glow effect
+        const glowGeometry = new THREE.CylinderGeometry(0.52, 0.52, 1.52, 8);
+        const glowMaterial = new THREE.MeshBasicMaterial({ 
+            color: 0xffffff, 
+            transparent: true, 
+            opacity: 0.1 
+        });
+        const glow = new THREE.Mesh(glowGeometry, glowMaterial);
+        avatar.add(glow);
+        
+        console.log('Photo texture applied to avatar');
+    }, undefined, function(error) {
+        console.warn('Could not load photo texture:', error);
     });
 }
 
@@ -754,60 +1130,7 @@ function showUnlockNotification(unlockedAvatars) {
     });
 }
 
-function selectPreset(preset) {
-    // Check if avatar is unlocked
-    if(!unlockedAvatars.includes(preset)) {
-        const requiredScore = avatarUnlockRequirements[preset];
-        if(requiredScore) {
-            alert(`This avatar requires ${requiredScore} points to unlock. You currently have ${userScore} points.`);
-            return;
-        }
-    }
-    
-    // Remove selection from all presets
-    document.querySelectorAll('.preset-avatar').forEach(avatar => {
-        avatar.classList.remove('selected');
-    });
-    
-    // Add selection to clicked preset
-    const selectedAvatar = document.querySelector(`[data-preset="${preset}"]`);
-    if(selectedAvatar) {
-        selectedAvatar.classList.add('selected');
-    }
-    
-    avatarData.preset = preset;
-    
-    // Award points for selecting premium avatars
-    if(avatarUnlockRequirements[preset]) {
-        addScore(10);
-    }
-}
-
-function usePresetAvatar() {
-    const nameInput = document.getElementById('avatar-name-preset');
-    
-    if(!avatarData.preset) {
-        alert('Please select a preset avatar');
-        return;
-    }
-    
-    avatarData = {
-        type: 'preset',
-        url: null,
-        name: nameInput ? nameInput.value : 'Student',
-        preset: avatarData.preset,
-        color: selectedColor,
-        size: selectedSize
-    };
-    
-    enableEnterButton();
-    addSystemMessage(`Preset avatar "${avatarData.preset}" selected!`);
-    
-    // Award points for using premium avatars
-    if(avatarUnlockRequirements[avatarData.preset]) {
-        addScore(25);
-    }
-}
+// Code block removed to avoid duplication
 
 // Avatar customization functions
 function setupAvatarCustomization() {
@@ -875,10 +1198,10 @@ function initAvatarPreview() {
         previewScene.add(directionalLight);
         
         // Create simple avatar representation for preview
-        const avatarGeometry = new THREE.CylinderGeometry(0.3, 0.3, 1.2, 8);
+        const avatarGeometry = new THREE.CylinderGeometry(0.5, 0.5, 1.5, 8);
         const avatarMaterial = new THREE.MeshLambertMaterial({ color: 0x00aaff });
         const previewAvatar = new THREE.Mesh(avatarGeometry, avatarMaterial);
-        previewAvatar.position.set(0, -0.5, 0);
+        previewAvatar.position.set(0, 0.75, 0);
         previewScene.add(previewAvatar);
         
         previewCamera.position.set(0, 0, 2.5);
@@ -903,22 +1226,51 @@ function initAvatarPreview() {
 
 // Enter room - Fixed function
 function enterRoom() {
-    console.log('Entering room:', currentRoom);
+    console.log('[DEBUG] Attempting to enter room');
     
-    if(!currentRoom) {
-        console.error('No room selected');
+    // Get avatar from the avatar system
+    const avatarSystem = window.avatarSystem;
+    if (!avatarSystem || !avatarSystem.selectedAvatar) {
+        showNotification('Please select an avatar first', 'error');
+        return;
+    }
+
+    // Hide dashboard and show game container
+    const dashboard = document.getElementById('dashboard');
+    const gameContainer = document.getElementById('game-container');
+    const loadingScreen = document.getElementById('loading-screen');
+    const avatarModal = document.getElementById('avatar-modal');
+
+    if (dashboard) dashboard.style.display = 'none';
+    if (avatarModal) avatarModal.style.display = 'none';
+    if (gameContainer) gameContainer.style.display = 'block';
+    if (loadingScreen) {
+        loadingScreen.style.display = 'flex';
+        document.getElementById('loading-progress').textContent = 'Loading: 0%';
+    }
+
+    // Initialize 3D environment
+    try {
+        init3DEnvironment(avatarSystem.selectedAvatar);
+        showNotification('Entering virtual environment...', 'info');
+    } catch (error) {
+        console.error('[ERROR] Failed to initialize 3D environment:', error);
+        showNotification('Failed to enter virtual environment. Please try again.', 'error');
+        // Reset UI state
+        if (dashboard) dashboard.style.display = 'block';
+        if (gameContainer) gameContainer.style.display = 'none';
+        if (loadingScreen) loadingScreen.style.display = 'none';
         return;
     }
     
-    closeAvatarModal();
-    
-    const dashboard = document.getElementById('dashboard');
-    const metaverse = document.getElementById('metaverse-space');
-    
-    if(dashboard && metaverse) {
+    // Hide modal and show loading screen
+    // Close the avatar modal
+    if (avatarModal) {
+        avatarModal.classList.add('hidden');
+    }
+    if (dashboard && metaverse) {
         dashboard.classList.add('hidden');
         metaverse.classList.remove('hidden');
-        
         // Update room info
         const roomName = document.getElementById('current-room-name');
         if(roomName) {
@@ -1030,11 +1382,11 @@ function setupLighting() {
     scene.add(rimLight);
     
     // Point lights for ambiance
-    const pointLight1 = new THREE.PointLight(0x00ff88, 0.3);
+    const pointLight1 = new THREE.PointLight(0x00ff88, 0.3, 10);
     pointLight1.position.set(-5, 3, -5);
     scene.add(pointLight1);
     
-    const pointLight2 = new THREE.PointLight(0xff8800, 0.3);
+    const pointLight2 = new THREE.PointLight(0xff8800, 0.3, 10);
     pointLight2.position.set(5, 3, 5);
     scene.add(pointLight2);
 }
@@ -1045,6 +1397,7 @@ function createRoomEnvironment() {
     const floorMaterial = new THREE.MeshLambertMaterial({ color: 0x333333 });
     const floor = new THREE.Mesh(floorGeometry, floorMaterial);
     floor.rotation.x = -Math.PI / 2;
+    floor.position.y = 0;
     floor.receiveShadow = true;
     scene.add(floor);
     
@@ -1321,38 +1674,29 @@ function loadReadyPlayerMeAvatar(url) {
                     console.log('Avatar loading progress:', (progress.loaded / progress.total * 100) + '%');
                 },
                 function(error) {
-                    console.warn('ReadyPlayer.me avatar failed to load, using simple avatar:', error);
-            addSystemMessage('Avatar loading failed, using default avatar');
+                    console.warn('ReadyPlayer.me avatar failed to load, using simple avatar instead:', error);
+                    addSystemMessage('Avatar loading failed, using default avatar');
+                }
+            );
         }
-    );
-}
+    }
 
 function loadPresetAvatar(preset) {
     // Remove existing avatar
     if(avatar) {
         scene.remove(avatar);
     }
-    
+
     // Get customization options
     const color = avatarData.color || 'blue';
     const size = avatarData.size || 1.0;
-    
-    // Create human-like preset avatars
-    avatar = createPresetHumanAvatar(preset, color, size);
-    avatar.position.set(0, 0, 3);
-    avatar.castShadow = true;
-    
-    scene.add(avatar);
-    
-    addSystemMessage(`Welcome ${avatarData.name}! Human-like "${preset}" avatar loaded!`);
-    return;
-    
+
     // Create different preset avatars with enhanced features
     let avatarColor = 0x00aaff;
     let avatarScale = 1;
     let avatarGeometry;
     let specialEffects = null;
-    
+
     switch(preset) {
         case 'male1':
             avatarColor = getColorValue(color, 0x4a90e2);
@@ -1364,8 +1708,7 @@ function loadPresetAvatar(preset) {
         case 'male2':
             avatarColor = getColorValue(color, 0x2ecc71);
             break;
-        case 'female2':
-            avatarColor = getColorValue(color, 0xf39c12);
+            avatarColor = 0xf39c12;
             avatarScale = 0.9;
             break;
         case 'ninja':
@@ -1408,37 +1751,40 @@ function loadPresetAvatar(preset) {
             avatarGeometry = new THREE.CylinderGeometry(0.8, 0.6, 2.2, 8);
             specialEffects = 'legendary';
             break;
+        default:
+            avatarColor = 0xffffff;
     }
-    
+
     // Use default geometry if not specified
     if(!avatarGeometry) {
         avatarGeometry = new THREE.CylinderGeometry(0.5, 0.5, 1.5, 8);
     }
-    
+
     // Create avatar material
     const avatarMaterial = new THREE.MeshLambertMaterial({ color: avatarColor });
     avatar = new THREE.Mesh(avatarGeometry, avatarMaterial);
-    
+
     // Apply scale (customization + preset scale)
     const finalScale = avatarScale * size;
     avatar.scale.set(finalScale, finalScale, finalScale);
     avatar.position.set(0, 0.75, 3);
     avatar.castShadow = true;
-    
+
     // Add special effects for premium avatars
     if(specialEffects) {
         addSpecialEffects(avatar, specialEffects);
     }
-    
+
     scene.add(avatar);
-    
+
     let message = `Welcome ${avatarData.name}! ${preset.charAt(0).toUpperCase() + preset.slice(1)} avatar loaded!`;
     if(specialEffects) {
         message += ` Special effects activated!`;
     }
-    
+
     addSystemMessage(message);
 }
+
 
 function getColorValue(colorName, defaultColor) {
     const colorMap = {
@@ -1520,119 +1866,107 @@ function createOtherAvatar(userId, name, position, preset = 'male1') {
         case 'male2':
             avatarColor = 0x2ecc71;
             break;
-        case 'female2':
             avatarColor = 0xf39c12;
             avatarScale = 0.9;
             break;
+        case 'ninja':
+            avatarColor = 0x2c3e50;
+            avatarGeometry = new THREE.CylinderGeometry(0.4, 0.4, 1.6, 8);
+            specialEffects = 'ninja';
+            break;
+        case 'robot':
+            avatarColor = 0x7f8c8d;
+            avatarGeometry = new THREE.BoxGeometry(0.6, 1.4, 0.4);
+            specialEffects = 'robot';
+            break;
+        case 'wizard':
+            avatarColor = 0x8e44ad;
+            avatarGeometry = new THREE.CylinderGeometry(0.5, 0.3, 1.8, 8);
+            specialEffects = 'wizard';
+            break;
+        case 'superhero':
+            avatarColor = 0xe74c3c;
+            avatarGeometry = new THREE.CylinderGeometry(0.6, 0.6, 1.7, 8);
+            specialEffects = 'superhero';
+            break;
+        case 'dragon':
+            avatarColor = 0x27ae60;
+            avatarGeometry = new THREE.CylinderGeometry(0.7, 0.5, 2.0, 8);
+            specialEffects = 'dragon';
+            break;
+        case 'phoenix':
+            avatarColor = 0xf39c12;
+            avatarGeometry = new THREE.CylinderGeometry(0.5, 0.4, 1.6, 8);
+            specialEffects = 'phoenix';
+            break;
+        case 'cosmic':
+            avatarColor = 0x3498db;
+            avatarGeometry = new THREE.CylinderGeometry(0.6, 0.6, 1.8, 8);
+            specialEffects = 'cosmic';
+            break;
+        case 'legendary':
+            avatarColor = 0xf1c40f;
+            avatarGeometry = new THREE.CylinderGeometry(0.8, 0.6, 2.2, 8);
+            specialEffects = 'legendary';
+            break;
+        default:
+            avatarColor = 0xffffff;
     }
-    
-    const avatarGeometry = new THREE.CylinderGeometry(0.5, 0.5, 1.5, 8);
+
+    // Use default geometry if not specified
+    if(!avatarGeometry) {
+        avatarGeometry = new THREE.CylinderGeometry(0.5, 0.5, 1.5, 8);
+    }
+
+    // Create avatar material
     const avatarMaterial = new THREE.MeshLambertMaterial({ color: avatarColor });
-    const otherAvatar = new THREE.Mesh(avatarGeometry, avatarMaterial);
-    otherAvatar.scale.set(avatarScale, avatarScale, avatarScale);
-    otherAvatar.position.set(position.x, 0.75, position.z);
-    otherAvatar.castShadow = true;
-    otherAvatar.userData = { userId, name, type: 'other-user' };
-    
-    // Add name label above avatar
-    const nameLabel = createNameLabel(name);
-    nameLabel.position.set(0, 2.5, 0);
-    otherAvatar.add(nameLabel);
-    
-    scene.add(otherAvatar);
-    otherAvatars.push(otherAvatar);
-    
-    return otherAvatar;
+    avatar = new THREE.Mesh(avatarGeometry, avatarMaterial);
+
+    // Apply scale (customization + preset scale)
+    const finalScale = avatarScale * size;
+    avatar.scale.set(finalScale, finalScale, finalScale);
+    avatar.position.set(0, 0.75, 3);
+    avatar.castShadow = true;
+
+    // Add special effects for premium avatars
+    if(specialEffects) {
+        addSpecialEffects(avatar, specialEffects);
+    }
+
+    scene.add(avatar);
+
+    let message = `Welcome ${avatarData.name}! ${preset.charAt(0).toUpperCase() + preset.slice(1)} avatar loaded!`;
+    if(specialEffects) {
+        message += ` Special effects activated!`;
+    }
+
+    addSystemMessage(message);
 }
 
-function createNameLabel(name) {
-    const canvas = document.createElement('canvas');
-    const context = canvas.getContext('2d');
-    canvas.width = 256;
-    canvas.height = 64;
-    
-    context.fillStyle = 'rgba(0, 0, 0, 0.8)';
-    context.fillRect(0, 0, canvas.width, canvas.height);
-    
-    context.fillStyle = 'white';
-    context.font = '24px Arial';
-    context.textAlign = 'center';
-    context.fillText(name, canvas.width / 2, canvas.height / 2 + 8);
-    
-    const texture = new THREE.CanvasTexture(canvas);
-    const material = new THREE.SpriteMaterial({ map: texture });
-    const sprite = new THREE.Sprite(material);
-    sprite.scale.set(2, 0.5, 1);
-    
-    return sprite;
-}
 
-function simulateOtherUsers() {
-    // Simulate other users joining the room
-    setTimeout(() => {
-        if(Math.random() > 0.5) {
-            const otherUser = createOtherAvatar(
-                'user2',
-                'Alex',
-                { x: 2, z: 2 },
-                'female1'
-            );
-            userCount++;
-            updateUserCount();
-            addSystemMessage('Alex joined the room');
-        }
-    }, 3000);
-    
-    setTimeout(() => {
-        if(Math.random() > 0.5) {
-            const otherUser = createOtherAvatar(
-                'user3',
-                'Jordan',
-                { x: -2, z: 1 },
-                'male2'
-            );
-            userCount++;
-            updateUserCount();
-            addSystemMessage('Jordan joined the room');
-        }
-    }, 6000);
-    
-    setTimeout(() => {
-        if(Math.random() > 0.5) {
-            const otherUser = createOtherAvatar(
-                'user4',
-                'Sam',
-                { x: 1, z: -2 },
-                'female2'
-            );
-            userCount++;
-            updateUserCount();
-            addSystemMessage('Sam joined the room');
-        }
-    }, 9000);
-}
-
-function updateUserCount() {
-    const userCountElement = document.getElementById('user-count');
-    if(userCountElement) {
-        userCountElement.textContent = `${userCount} user${userCount > 1 ? 's' : ''} online`;
+// Debug logging function
+function log(context, message, type = 'info') {
+    if (!window.DEBUG) return;
+    const timestamp = new Date().toISOString();
+    const prefix = `[${timestamp}] [${type.toUpperCase()}] [${context}]`;
+    switch (type) {
+        case 'error':
+            console.error(prefix, message);
+            break;
+        case 'warn':
+            console.warn(prefix, message);
+            break;
+        case 'debug':
+            console.debug(prefix, message);
+            break;
+        default:
+            console.log(prefix, message);
     }
 }
 
-function animateOtherAvatars() {
-    // Simple animation for other avatars (idle movement)
-    otherAvatars.forEach(avatar => {
-        if(avatar && avatar.position) {
-            // Gentle bobbing motion
-            avatar.position.y = 0.75 + Math.sin(Date.now() * 0.001 + avatar.userData.userId.charCodeAt(0)) * 0.02;
-            
-            // Slight rotation
-            avatar.rotation.y += 0.005;
-        }
-    });
-}
-
-// Animation and render loop
+// Camera and controls
+let cameraMode = 'third-person'; // 'first-person', 'third-person', 'free-look'
+let camera
 function animate() {
     if(!renderer || !scene || !camera) return;
     
@@ -1665,10 +1999,13 @@ function animate() {
 function handleMovement() {
     if(!avatar) return;
     
-    // Enhanced movement system like Minecraft/PUBG
-    const baseSpeed = 0.12;
-    const runMultiplier = keys['ShiftLeft'] || keys['ShiftRight'] ? 2.5 : 1.0;
+    // Enhanced movement system with collision detection
+    const baseSpeed = 0.06; // Slower base movement speed
+    const runMultiplier = keys['ShiftLeft'] || keys['ShiftRight'] ? 1.8 : 1.0;
     const moveSpeed = baseSpeed * runMultiplier;
+    
+    // Store current position for reverting if collision occurs
+    const originalPosition = avatar.position.clone();
     let moved = false;
     
     // Get camera direction for relative movement
@@ -1687,21 +2024,34 @@ function handleMovement() {
     
     // Forward/backward movement
     if(keys['KeyW'] || keys['ArrowUp']) {
-        avatar.position.add(cameraDirection.clone().multiplyScalar(moveSpeed));
-        moved = true;
+        const newPosition = avatar.position.clone().add(cameraDirection.clone().multiplyScalar(moveSpeed));
+        if (!checkCollision(newPosition)) {
+            avatar.position.copy(newPosition);
+            moved = true;
+        }
     }
     if(keys['KeyS'] || keys['ArrowDown']) {
-        avatar.position.add(cameraDirection.clone().multiplyScalar(-moveSpeed));
-        moved = true;
+        const newPosition = avatar.position.clone().add(cameraDirection.clone().multiplyScalar(-moveSpeed));
+        if (!checkCollision(newPosition)) {
+            avatar.position.copy(newPosition);
+            moved = true;
+        }
     }
     
     // Left/right movement (strafing)
     if(keys['KeyA'] || keys['ArrowLeft']) {
-        avatar.position.add(rightVector.clone().multiplyScalar(-moveSpeed));
-        moved = true;
+        const newPosition = avatar.position.clone().add(rightVector.clone().multiplyScalar(-moveSpeed));
+        if (!checkCollision(newPosition)) {
+            avatar.position.copy(newPosition);
+            moved = true;
+        }
     }
     if(keys['KeyD'] || keys['ArrowRight']) {
-        avatar.position.add(rightVector.clone().multiplyScalar(moveSpeed));
+        const newPosition = avatar.position.clone().add(rightVector.clone().multiplyScalar(moveSpeed));
+        if (!checkCollision(newPosition)) {
+            avatar.position.copy(newPosition);
+            moved = true;
+        }
         moved = true;
     }
     
@@ -1792,7 +2142,7 @@ function updateCamera() {
             if(isPointerLocked) {
                 // Mouse look for third-person
                 cameraControls.angle -= mouseX * mouseSensitivity;
-                cameraControls.height = Math.max(0.5, Math.min(3, cameraControls.height - mouseY * 0.1);
+                cameraControls.height = Math.max(0.5, Math.min(3, cameraControls.height - mouseY * 0.1));
             }
             
             const cameraOffset = new THREE.Vector3(
@@ -2327,9 +2677,7 @@ function createHumanLikeAvatar(mode, customizations, photoUrl) {
     
     // Body (torso)
     const bodyGeometry = new THREE.CylinderGeometry(0.25, 0.3, 0.8, 8);
-    const bodyMaterial = new THREE.MeshLambertMaterial({ 
-        color: getClothingColor(mode) 
-    });
+    const bodyMaterial = new THREE.MeshLambertMaterial({ color: getClothingColor(mode) });
     const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
     body.position.set(0, 0.8, 0);
     body.castShadow = true;
@@ -2337,18 +2685,14 @@ function createHumanLikeAvatar(mode, customizations, photoUrl) {
     
     // Arms
     const armGeometry = new THREE.CylinderGeometry(0.08, 0.1, 0.6, 6);
-    const armMaterial = new THREE.MeshLambertMaterial({ 
-        color: getSkinToneColor(customizations.skinTone) 
-    });
+    const armMaterial = new THREE.MeshLambertMaterial({ color: 0xfdbcb4 });
     
-    // Left arm
     const leftArm = new THREE.Mesh(armGeometry, armMaterial);
     leftArm.position.set(-0.4, 0.9, 0);
     leftArm.rotation.z = 0.3;
     leftArm.castShadow = true;
     avatarGroup.add(leftArm);
     
-    // Right arm
     const rightArm = new THREE.Mesh(armGeometry, armMaterial);
     rightArm.position.set(0.4, 0.9, 0);
     rightArm.rotation.z = -0.3;
@@ -2357,17 +2701,13 @@ function createHumanLikeAvatar(mode, customizations, photoUrl) {
     
     // Legs
     const legGeometry = new THREE.CylinderGeometry(0.1, 0.12, 0.8, 6);
-    const legMaterial = new THREE.MeshLambertMaterial({ 
-        color: getClothingColor(mode) 
-    });
+    const legMaterial = new THREE.MeshLambertMaterial({ color: getClothingColor(mode) });
     
-    // Left leg
     const leftLeg = new THREE.Mesh(legGeometry, legMaterial);
     leftLeg.position.set(-0.15, -0.4, 0);
     leftLeg.castShadow = true;
     avatarGroup.add(leftLeg);
     
-    // Right leg
     const rightLeg = new THREE.Mesh(legGeometry, legMaterial);
     rightLeg.position.set(0.15, -0.4, 0);
     rightLeg.castShadow = true;
@@ -2375,9 +2715,7 @@ function createHumanLikeAvatar(mode, customizations, photoUrl) {
     
     // Eyes
     const eyeGeometry = new THREE.SphereGeometry(0.05, 8, 8);
-    const eyeMaterial = new THREE.MeshLambertMaterial({ 
-        color: getEyeColor(customizations.eyeColor) 
-    });
+    const eyeMaterial = new THREE.MeshLambertMaterial({ color: 0x2c3e50 });
     
     const leftEye = new THREE.Mesh(eyeGeometry, eyeMaterial);
     leftEye.position.set(-0.1, 1.45, 0.25);
@@ -2692,421 +3030,2387 @@ function addPresetSpecialFeatures(avatarGroup, preset) {
     avatarGroup.add(light);
 }
 
-// Audio Output Functions
-function setupAudioOutput() {
-    // Create audio output for hearing other characters
-    if(!audioContext) {
-        audioContext = new (window.AudioContext || window.webkitAudioContext)();
+// Multiplayer functions
+function createOtherAvatar(userId, name, position, preset = 'male1') {
+    // Create avatar for another user
+    let avatarColor = 0x00aaff;
+    let avatarScale = 1;
+    
+    switch(preset) {
+        case 'male1':
+            avatarColor = 0x4a90e2;
+            break;
+        case 'female1':
+            avatarColor = 0xe24a90;
+            avatarScale = 0.9;
+            break;
+        case 'male2':
+            avatarColor = 0x2ecc71;
+            break;
     }
-    
-    // Create gain node for volume control
-    const gainNode = audioContext.createGain();
-    gainNode.gain.value = 0.8; // Default volume
-    gainNode.connect(audioContext.destination);
-    
-    // Store for later use
-    window.audioGainNode = gainNode;
-    
-    // Create audio elements for different characters
-    createCharacterAudioElements();
-    
-    addSystemMessage('Audio output ready - you can now hear other characters!');
+    }
+    const avatarGeometry = new THREE.CylinderGeometry(0.5, 0.5, 1.5, 8);
+    const avatarMaterial = new THREE.MeshLambertMaterial({ color: avatarColor });
+    const otherAvatar = new THREE.Mesh(avatarGeometry, avatarMaterial);
+    otherAvatar.scale.set(avatarScale, avatarScale, avatarScale);
+    otherAvatar.position.set(position.x, 0.75, position.z);
+    otherAvatar.castShadow = true;
+    otherAvatar.userData = { userId, name, type: 'other-user' };
+    // Add name label above avatar
+    const nameLabel = createNameLabel(name);
+    nameLabel.position.set(0, 2.5, 0);
+    otherAvatar.add(nameLabel);
+    scene.add(otherAvatar);
+    otherAvatars.push(otherAvatar);
+    return otherAvatar;
 }
 
-function createCharacterAudioElements() {
-    // Create audio elements for each character
-    const characters = ['Jordan', 'Sam', 'Alex', 'Maya', 'Chris', 'Taylor'];
+function createNameLabel(name) {
+    const canvas = document.createElement('canvas');
+    const context = canvas.getContext('2d');
+    canvas.width = 256;
+    canvas.height = 64;
     
-    characters.forEach(characterName => {
-        const audioElement = document.createElement('audio');
-        audioElement.id = `audio-${characterName.toLowerCase()}`;
-        audioElement.volume = 0.7;
-        audioElement.loop = false;
-        document.body.appendChild(audioElement);
-    });
+    context.fillStyle = 'rgba(0, 0, 0, 0.8)';
+    context.fillRect(0, 0, canvas.width, canvas.height);
     
-    // Start simulating character conversations
-    startCharacterConversations();
+    context.fillStyle = 'white';
+    context.font = '24px Arial';
+    context.textAlign = 'center';
+    context.fillText(name, canvas.width / 2, canvas.height / 2 + 8);
+    
+    const texture = new THREE.CanvasTexture(canvas);
+    const material = new THREE.SpriteMaterial({ map: texture });
+    const sprite = new THREE.Sprite(material);
+    sprite.scale.set(2, 0.5, 1);
+    
+    return sprite;
 }
 
-function startCharacterConversations() {
-    // Simulate character conversations in meetings
-    const conversations = [
-        { speaker: 'Jordan', text: 'Welcome to the meeting everyone!', delay: 2000 },
-        { speaker: 'Sam', text: 'Thanks for having us, Jordan!', delay: 5000 },
-        { speaker: 'Alex', text: 'I\'m excited to discuss the new project.', delay: 8000 },
-        { speaker: 'Jordan', text: 'Let\'s start with the quarterly review.', delay: 12000 },
-        { speaker: 'Sam', text: 'The numbers look great this quarter.', delay: 15000 },
-        { speaker: 'Alex', text: 'I agree, we\'ve made excellent progress.', delay: 18000 }
-    ];
-    
-    conversations.forEach(conversation => {
-        setTimeout(() => {
-            playCharacterVoice(conversation.speaker, conversation.text);
-        }, conversation.delay);
-    });
-    
-    // Continue with random conversations
+function simulateOtherUsers() {
+    // Simulate other users joining the room
     setTimeout(() => {
-        startRandomConversations();
-    }, 20000);
+        if(Math.random() > 0.5) {
+            const otherUser = createOtherAvatar(
+                'user2',
+                'Alex',
+                { x: 2, z: 2 },
+                'female1'
+            );
+            userCount++;
+            updateUserCount();
+            addSystemMessage('Alex joined the room');
+        }
+    }, 3000);
+    
+    setTimeout(() => {
+        if(Math.random() > 0.5) {
+            const otherUser = createOtherAvatar(
+                'user3',
+                'Jordan',
+                { x: -2, z: 1 },
+                'male2'
+            );
+            userCount++;
+            updateUserCount();
+            addSystemMessage('Jordan joined the room');
+        }
+    }, 6000);
+    
+    setTimeout(() => {
+        if(Math.random() > 0.5) {
+            const otherUser = createOtherAvatar(
+                'user4',
+                'Sam',
+                { x: 1, z: -2 },
+                'female2'
+            );
+            userCount++;
+            updateUserCount();
+            addSystemMessage('Sam joined the room');
+        }
+    }, 9000);
 }
 
-function playCharacterVoice(characterName, text) {
-    // Play character voice using Web Speech API
-    if('speechSynthesis' in window) {
-        const utterance = new SpeechSynthesisUtterance(text);
-        utterance.voice = getCharacterVoice(characterName);
-        utterance.rate = 0.9;
-        utterance.pitch = getCharacterPitch(characterName);
-        utterance.volume = 0.8;
-        
-        // Add visual indicator
-        showCharacterSpeaking(characterName, text);
-        
-        speechSynthesis.speak(utterance);
-        
-        addSystemMessage(`${characterName}: "${text}"`);
+function updateUserCount() {
+    const userCountElement = document.getElementById('user-count');
+    if(userCountElement) {
+        userCountElement.textContent = `${userCount} user${userCount > 1 ? 's' : ''} online`;
     }
 }
 
-function getCharacterVoice(characterName) {
-    const voices = speechSynthesis.getVoices();
-    const characterVoices = {
-        'Jordan': voices.find(v => v.name.includes('Male')) || voices[0],
-        'Sam': voices.find(v => v.name.includes('Female')) || voices[1],
-        'Alex': voices.find(v => v.name.includes('Male')) || voices[2],
-        'Maya': voices.find(v => v.name.includes('Female')) || voices[3],
-        'Chris': voices.find(v => v.name.includes('Male')) || voices[4],
-        'Taylor': voices.find(v => v.name.includes('Female')) || voices[5]
-    };
-    return characterVoices[characterName] || voices[0];
+function animateOtherAvatars() {
+    // Simple animation for other avatars (idle movement)
+    otherAvatars.forEach(avatar => {
+        if(avatar && avatar.position) {
+            // Gentle bobbing motion
+            avatar.position.y = 0.75 + Math.sin(Date.now() * 0.001 + avatar.userData.userId.charCodeAt(0)) * 0.02;
+            
+            // Slight rotation
+            avatar.rotation.y += 0.005;
+        }
+    });
 }
 
-function getCharacterPitch(characterName) {
-    const pitches = {
-        'Jordan': 1.0,
-        'Sam': 1.2,
-        'Alex': 0.9,
-        'Maya': 1.3,
-        'Chris': 0.8,
-        'Taylor': 1.1
-    };
-    return pitches[characterName] || 1.0;
-}
-
-function showCharacterSpeaking(characterName, text) {
-    // Find the character in the scene and add speaking indicator
-    const characterAvatars = scene.children.filter(child => 
-        child.userData && child.userData.name === characterName
-    );
+// Animation and render loop
+function animate() {
+    if(!renderer || !scene || !camera) return;
     
-    if(characterAvatars.length > 0) {
-        const character = characterAvatars[0];
-        
-        // Add speaking bubble
-        const bubbleGeometry = new THREE.SphereGeometry(0.1, 8, 8);
-        const bubbleMaterial = new THREE.MeshBasicMaterial({ 
-            color: 0x00ff00, 
-            transparent: true, 
-            opacity: 0.7 
-        });
-        const bubble = new THREE.Mesh(bubbleGeometry, bubbleMaterial);
-        bubble.position.set(0, 2, 0);
-        character.add(bubble);
-        
-        // Remove bubble after speaking
-        setTimeout(() => {
-            character.remove(bubble);
-        }, 3000);
+    requestAnimationFrame(animate);
+    
+    // Update avatar mixer
+    if(avatarMixer) {
+        avatarMixer.update(0.016);
     }
-}
-
-function startRandomConversations() {
-    const randomPhrases = [
-        { speaker: 'Jordan', text: 'That\'s a great point!' },
-        { speaker: 'Sam', text: 'I think we should consider this further.' },
-        { speaker: 'Alex', text: 'Absolutely, let\'s discuss this.' },
-        { speaker: 'Maya', text: 'I have some ideas about this.' },
-        { speaker: 'Chris', text: 'What do you think about the timeline?' },
-        { speaker: 'Taylor', text: 'That sounds like a good plan.' }
-    ];
     
-    // Random conversation every 10-15 seconds
-    setInterval(() => {
-        const randomPhrase = randomPhrases[Math.floor(Math.random() * randomPhrases.length)];
-        playCharacterVoice(randomPhrase.speaker, randomPhrase.text);
-    }, Math.random() * 5000 + 10000);
+    // Handle movement
+    handleMovement();
+    
+    // Animate other avatars
+    animateOtherAvatars();
+    
+    // Update camera
+    updateCamera();
+    
+    // Animate particles if available
+    if(window.animateParticles) {
+        window.animateParticles();
+    }
+    
+    // Render
+    renderer.render(scene, camera);
 }
 
-// Avatar Animation Functions
-function animateAvatarMovement(isMoving, isRunning) {
+// Movement handling
+function handleMovement() {
     if(!avatar) return;
     
-    // Find body parts for animation
-    const bodyParts = findAvatarBodyParts(avatar);
+    // Enhanced movement system with collision detection
+    const baseSpeed = 0.06; // Slower base movement speed
+    const runMultiplier = keys['ShiftLeft'] || keys['ShiftRight'] ? 1.8 : 1.0;
+    const moveSpeed = baseSpeed * runMultiplier;
     
-    if(isMoving) {
-        // Walking/running animation
-        const time = Date.now() * 0.01;
-        const speed = isRunning ? 0.02 : 0.01;
-        
-        if(bodyParts.leftArm && bodyParts.rightArm) {
-            // Arm swinging animation
-            bodyParts.leftArm.rotation.z = Math.sin(time * speed) * 0.5;
-            bodyParts.rightArm.rotation.z = -Math.sin(time * speed) * 0.5;
+    // Store current position for reverting if collision occurs
+    const originalPosition = avatar.position.clone();
+    let moved = false;
+    
+    // Get camera direction for relative movement
+    const cameraDirection = new THREE.Vector3();
+    camera.getWorldDirection(cameraDirection);
+    cameraDirection.y = 0; // Keep movement on horizontal plane
+    cameraDirection.normalize();
+    
+    // Calculate right vector
+    const rightVector = new THREE.Vector3();
+    rightVector.crossVectors(cameraDirection, new THREE.Vector3(0, 1, 0));
+    rightVector.normalize();
+    
+    // Store old position for collision detection
+    const oldPosition = avatar.position.clone();
+    
+    // Forward/backward movement
+    if(keys['KeyW'] || keys['ArrowUp']) {
+        const newPosition = avatar.position.clone().add(cameraDirection.clone().multiplyScalar(moveSpeed));
+        if (!checkCollision(newPosition)) {
+            avatar.position.copy(newPosition);
+            moved = true;
         }
-        
-        if(bodyParts.leftLeg && bodyParts.rightLeg) {
-            // Leg walking animation
-            bodyParts.leftLeg.rotation.x = Math.sin(time * speed) * 0.3;
-            bodyParts.rightLeg.rotation.x = -Math.sin(time * speed) * 0.3;
+    }
+    if(keys['KeyS'] || keys['ArrowDown']) {
+        const newPosition = avatar.position.clone().add(cameraDirection.clone().multiplyScalar(-moveSpeed));
+        if (!checkCollision(newPosition)) {
+            avatar.position.copy(newPosition);
+            moved = true;
         }
-        
-        // Body bobbing
-        avatar.position.y = 0.1 + Math.sin(time * speed * 2) * 0.05;
-        
-    } else {
-        // Idle animation
-        const time = Date.now() * 0.005;
-        
-        if(bodyParts.leftArm && bodyParts.rightArm) {
-            // Gentle arm movement
-            bodyParts.leftArm.rotation.z = Math.sin(time) * 0.1;
-            bodyParts.rightArm.rotation.z = -Math.sin(time) * 0.1;
+    }
+    
+    // Left/right movement (strafing)
+    if(keys['KeyA'] || keys['ArrowLeft']) {
+        const newPosition = avatar.position.clone().add(rightVector.clone().multiplyScalar(-moveSpeed));
+        if (!checkCollision(newPosition)) {
+            avatar.position.copy(newPosition);
+            moved = true;
         }
+    }
+    if(keys['KeyD'] || keys['ArrowRight']) {
+        const newPosition = avatar.position.clone().add(rightVector.clone().multiplyScalar(moveSpeed));
+        if (!checkCollision(newPosition)) {
+            avatar.position.copy(newPosition);
+            moved = true;
+        }
+        moved = true;
+    }
+    
+    // Enhanced jumping system
+    if(keys['Space'] && avatar.position.y <= 0.75) {
+        avatar.position.y += 0.4;
+        addSystemMessage('Jump!');
+    }
+    
+    // Apply gravity
+    if(avatar.position.y > 0.75) {
+        avatar.position.y -= 0.08;
+        if(avatar.position.y < 0.75) {
+            avatar.position.y = 0.75;
+        }
+    }
+    
+    // Collision detection with room boundaries
+    const roomBounds = 15; // Larger room for better movement
+    if(avatar.position.x > roomBounds) {
+        avatar.position.x = roomBounds;
+    }
+    if(avatar.position.x < -roomBounds) {
+        avatar.position.x = -roomBounds;
+    }
+    if(avatar.position.z > roomBounds) {
+        avatar.position.z = roomBounds;
+    }
+    if(avatar.position.z < -roomBounds) {
+        avatar.position.z = -roomBounds;
+    }
+    
+    // Update avatar rotation based on movement direction
+    if(moved) {
+        const moveDirection = new THREE.Vector3();
+        if(keys['KeyW'] || keys['ArrowUp']) moveDirection.add(cameraDirection);
+        if(keys['KeyS'] || keys['ArrowDown']) moveDirection.add(cameraDirection.clone().multiplyScalar(-1));
+        if(keys['KeyA'] || keys['ArrowLeft']) moveDirection.add(rightVector.clone().multiplyScalar(-1));
+        if(keys['KeyD'] || keys['ArrowRight']) moveDirection.add(rightVector);
         
-        // Gentle breathing motion
-        avatar.position.y = 0.1 + Math.sin(time) * 0.02;
+        if(moveDirection.length() > 0) {
+            moveDirection.normalize();
+            const targetRotation = Math.atan2(moveDirection.x, moveDirection.z);
+            avatar.rotation.y = targetRotation;
+        }
+    }
+    
+    // Animate avatar based on movement
+    animateAvatarMovement(moved, keys['ShiftLeft'] || keys['ShiftRight']);
+    
+    // Update camera position for first-person view
+    if(cameraMode === 'first-person') {
+        camera.position.set(
+            avatar.position.x,
+            avatar.position.y + 1.6, // Eye level
+            avatar.position.z
+        );
     }
 }
 
-function findAvatarBodyParts(avatar) {
-    const bodyParts = {};
+function updateCamera() {
+    if(!avatar || !camera) return;
     
-    // Search through avatar children to find body parts
-    avatar.traverse((child) => {
-        if(child.userData && child.userData.bodyPart) {
-            bodyParts[child.userData.bodyPart] = child;
-        }
-    });
-    
-    return bodyParts;
-}
-
-function addBodyPartLabels(avatarGroup) {
-    // Add userData to body parts for animation
-    avatarGroup.traverse((child) => {
-        if(child.geometry) {
-            // Identify body parts by position
-            if(child.position.y > 1.3 && child.position.y < 1.6) {
-                child.userData.bodyPart = 'head';
-            } else if(child.position.y > 0.4 && child.position.y < 1.2) {
-                child.userData.bodyPart = 'body';
-            } else if(child.position.x < -0.2) {
-                child.userData.bodyPart = 'leftArm';
-            } else if(child.position.x > 0.2) {
-                child.userData.bodyPart = 'rightArm';
-            } else if(child.position.y < 0 && child.position.x < 0) {
-                child.userData.bodyPart = 'leftLeg';
-            } else if(child.position.y < 0 && child.position.x > 0) {
-                child.userData.bodyPart = 'rightLeg';
+    switch(cameraMode) {
+        case 'first-person':
+            // First-person camera - camera is at avatar's eye level with mouse look
+            camera.position.set(
+                avatar.position.x,
+                avatar.position.y + 1.6, // Eye level
+                avatar.position.z
+            );
+            
+            // Enhanced mouse look for first-person gaming experience
+            if(isPointerLocked) {
+                camera.rotation.y -= mouseX * mouseSensitivity;
+                camera.rotation.x -= mouseY * mouseSensitivity;
+                camera.rotation.x = Math.max(-Math.PI/2, Math.min(Math.PI/2, camera.rotation.x));
+                
+                // Update avatar rotation based on camera rotation
+                avatar.rotation.y = camera.rotation.y;
+            } else {
+                camera.rotation.copy(avatar.rotation);
             }
-        }
+            break;
+            
+        case 'third-person':
+            // Third-person camera - follows behind avatar with mouse look
+            if(isPointerLocked) {
+                // Mouse look for third-person
+                cameraControls.angle -= mouseX * mouseSensitivity;
+                cameraControls.height = Math.max(0.5, Math.min(3, cameraControls.height - mouseY * 0.1));
+            }
+            
+            const cameraOffset = new THREE.Vector3(
+                -Math.sin(avatar.rotation.y + cameraControls.angle) * cameraControls.distance,
+                cameraControls.height,
+                -Math.cos(avatar.rotation.y + cameraControls.angle) * cameraControls.distance
+            );
+            camera.position.copy(avatar.position).add(cameraOffset);
+            camera.lookAt(avatar.position.x, avatar.position.y + 1, avatar.position.z);
+            break;
+            
+        case 'free-look':
+            // Free-look camera - can be controlled independently
+            if(isPointerLocked) {
+                // Update camera rotation based on mouse movement
+                camera.rotation.y -= mouseX * mouseSensitivity;
+                camera.rotation.x -= mouseY * mouseSensitivity;
+                camera.rotation.x = Math.max(-Math.PI/2, Math.min(Math.PI/2, camera.rotation.x));
+            }
+            break;
+    }
+}
+
+// Camera view switching
+function setCameraView(mode) {
+    cameraMode = mode;
+    
+    // Update button states
+    document.querySelectorAll('.control-btn').forEach(btn => {
+        btn.classList.remove('active');
     });
-}
-
-// Room switching
-function switchRoom(roomId) {
-    if(roomId === currentRoom || !scene) return;
     
-    console.log('Switching to room:', roomId);
-    showLoading();
-    addSystemMessage(`Switching to ${roomData[roomId].name}...`);
-    
-    // Update current room
-    currentRoom = roomId;
-    const roomName = document.getElementById('current-room-name');
-    if(roomName) {
-        roomName.textContent = roomData[currentRoom].name;
+    const activeBtn = document.querySelector(`[onclick="setCameraView('${mode}')"]`);
+    if(activeBtn) {
+        activeBtn.classList.add('active');
     }
     
-    // Clear room objects but keep avatar and basic scene
-    const objectsToRemove = [];
-    scene.traverse(object => {
-        if(object !== avatar && object.type === 'Mesh' && object.parent === scene) {
-            objectsToRemove.push(object);
+    // Handle pointer lock for free-look mode
+    if(mode === 'free-look') {
+        requestPointerLock();
+    } else {
+        exitPointerLock();
+    }
+    
+    addSystemMessage(`Camera mode: ${mode.replace('-', ' ')}`);
+}
+
+function requestPointerLock() {
+    const canvas = document.getElementById('three-canvas');
+    if(canvas && canvas.requestPointerLock) {
+        canvas.requestPointerLock();
+    }
+}
+
+function exitPointerLock() {
+    if(document.exitPointerLock) {
+        document.exitPointerLock();
+    }
+}
+
+// Event handlers
+function onKeyDown(event) {
+    keys[event.code] = true;
+}
+
+function onKeyUp(event) {
+    keys[event.code] = false;
+}
+
+function onMouseMove(event) {
+    if(isPointerLocked) {
+        // For pointer lock mode, use movement deltas
+        mouseX = event.movementX || 0;
+        mouseY = event.movementY || 0;
+    } else {
+        // For normal mode, use screen coordinates
+    mouseX = (event.clientX / window.innerWidth) * 2 - 1;
+    mouseY = -(event.clientY / window.innerHeight) * 2 + 1;
+    }
+}
+
+function onPointerLockChange() {
+    isPointerLocked = document.pointerLockElement === document.getElementById('three-canvas');
+    
+    if(isPointerLocked) {
+        addSystemMessage('Pointer locked - Mouse controls active');
+    } else {
+        addSystemMessage('Pointer unlocked');
+    }
+}
+
+function onPointerLockError() {
+    console.error('Pointer lock failed');
+    addSystemMessage('Pointer lock failed - Some features may not work');
+}
+
+function onMouseClick(event) {
+    if(!isPointerLocked || !scene || !camera) return;
+    
+    // Raycast to detect clicked objects
+    const raycaster = new THREE.Raycaster();
+    const mouse = new THREE.Vector2(0, 0); // Center of screen for pointer lock
+    raycaster.setFromCamera(mouse, camera);
+    
+    const intersects = raycaster.intersectObjects(scene.children, true);
+    
+    if(intersects.length > 0) {
+        const clickedObject = intersects[0].object;
+        if(clickedObject.userData && clickedObject.userData.type === 'interactive') {
+            handleObjectInteraction(clickedObject);
         }
-    });
-    
-    objectsToRemove.forEach(object => {
-        if(object !== avatar) {
-            scene.remove(object);
-        }
-    });
-    
-    // Update background color
-    scene.background = new THREE.Color(roomData[currentRoom].color);
-    
-    // Recreate room environment
-    createRoomEnvironment();
-    
-    // Reset avatar position
-    if(avatar && avatar.position) {
-        avatar.position.set(0, 0.75, 3);
-    }
-    
-    hideLoading();
-    addSystemMessage(`Welcome to ${roomData[currentRoom].name}!`);
-}
-
-// UI helpers
-function showLoading() {
-    const loadingScreen = document.getElementById('loading-screen');
-    if(loadingScreen) {
-        loadingScreen.style.display = 'flex';
     }
 }
 
-function hideLoading() {
-    const loadingScreen = document.getElementById('loading-screen');
-    if(loadingScreen) {
-        loadingScreen.style.display = 'none';
+function handleObjectInteraction(object) {
+    const objectName = object.userData.name;
+    
+    switch(objectName) {
+        case 'conference-table':
+            addSystemMessage('You clicked on the conference table - Meeting mode activated!');
+            activateMeetingMode();
+            break;
+        case 'whiteboard':
+            addSystemMessage('You clicked on the whiteboard - Drawing mode activated!');
+            activateWhiteboardMode();
+            break;
+        default:
+            if(objectName.startsWith('chair-')) {
+                const seatNumber = object.userData.seatNumber;
+                addSystemMessage(`You clicked on chair ${seatNumber + 1} - Sitting down...`);
+                sitInChair(seatNumber);
+            }
+            break;
     }
 }
 
-function exitRoom() {
-    console.log('Exiting room...');
+function activateMeetingMode() {
+    // Award points for starting a meeting
+    addScore(100);
     
-    // Clean up media streams
+    // Show meeting controls
+    addSystemMessage('Meeting mode activated! You can now:');
+    addSystemMessage('- Share your screen with other participants');
+    addSystemMessage('- Use voice chat for discussions');
+    addSystemMessage('- Take meeting notes on the whiteboard');
+    addSystemMessage('- Invite others to join the meeting');
+    
+    // Enable enhanced voice chat
     if(mediaStream) {
-        mediaStream.getTracks().forEach(track => track.stop());
-        mediaStream = null;
+        addSystemMessage('Voice chat enhanced for meeting mode');
+    }
+}
+
+function activateWhiteboardMode() {
+    // Award points for using whiteboard
+    addScore(50);
+    
+    addSystemMessage('Whiteboard mode activated!');
+    addSystemMessage('Click and drag to draw on the whiteboard');
+    addSystemMessage('Press ESC to exit whiteboard mode');
+    
+    // In a real implementation, you would:
+    // 1. Switch to drawing mode
+    // 2. Enable mouse/touch drawing
+    // 3. Show drawing tools (pen, eraser, colors)
+    // 4. Allow saving/loading drawings
+}
+
+function sitInChair(seatNumber) {
+    // Award points for sitting
+    addScore(25);
+    
+    // Move avatar to chair position
+    if(avatar) {
+        const chairPositions = [
+            { x: 0, z: 4.5 },      // North
+            { x: 3.2, z: 3.2 },    // Northeast
+            { x: 4.5, z: 0 },      // East
+            { x: 3.2, z: -3.2 },   // Southeast
+            { x: 0, z: -4.5 },     // South
+            { x: -3.2, z: -3.2 },  // Southwest
+            { x: -4.5, z: 0 },     // West
+            { x: -3.2, z: 3.2 }    // Northwest
+        ];
+        
+        const targetPosition = chairPositions[seatNumber];
+        if(targetPosition) {
+            // Smooth movement to chair
+            animateToPosition(avatar, targetPosition);
+            addSystemMessage(`Sitting in chair ${seatNumber + 1} - Perfect for meetings!`);
+        }
+    }
+}
+
+function animateToPosition(object, targetPosition) {
+    const startPosition = object.position.clone();
+    const duration = 1000; // 1 second
+    const startTime = Date.now();
+    
+    function animate() {
+        const elapsed = Date.now() - startTime;
+        const progress = Math.min(elapsed / duration, 1);
+        
+        // Easing function for smooth movement
+        const easeProgress = 1 - Math.pow(1 - progress, 3);
+        
+        object.position.lerpVectors(startPosition, new THREE.Vector3(targetPosition.x, 0.75, targetPosition.z), easeProgress);
+        
+        if(progress < 1) {
+            requestAnimationFrame(animate);
+        }
     }
     
-    if(isScreenSharing) {
+    animate();
+}
+
+function onWindowResize() {
+    if(!camera || !renderer) return;
+    
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+}
+
+// Communication functions
+function initializeCommunication() {
+    console.log('Initializing communication...');
+    addSystemMessage('Communication system ready. Click buttons to activate features.');
+    
+    // Initialize WebRTC for voice chat
+    initializeWebRTC();
+}
+
+function initializeWebRTC() {
+    // Check for WebRTC support
+    if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        console.warn('WebRTC not supported in this browser');
+        addSystemMessage('Voice chat not supported in this browser');
+        return;
+    }
+    
+    // Request microphone access
+    navigator.mediaDevices.getUserMedia({ audio: true })
+        .then(stream => {
+            mediaStream = stream;
+            console.log('Microphone access granted');
+            addSystemMessage('Microphone ready - Voice chat available');
+            
+            // Set up audio context for voice processing
+            setupAudioContext(stream);
+        })
+        .catch(error => {
+            console.error('Microphone access denied:', error);
+            addSystemMessage('Microphone access denied - Voice chat unavailable');
+        });
+}
+
+function setupAudioContext(stream) {
+    try {
+        audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        const source = audioContext.createMediaStreamSource(stream);
+        
+        // Create audio analyzer for voice activity detection
+        analyzer = audioContext.createAnalyser();
+        analyzer.fftSize = 256;
+        source.connect(analyzer);
+        
+        // Monitor voice activity
+        monitorVoiceActivity(analyzer);
+        
+        // Setup audio output for hearing other characters
+        setupAudioOutput();
+        
+        addSystemMessage('Voice chat and audio output initialized!');
+        
+    } catch(error) {
+        console.error('Audio context setup failed:', error);
+    }
+}
+
+function monitorVoiceActivity(analyzer) {
+    const bufferLength = analyzer.frequencyBinCount;
+    const dataArray = new Uint8Array(bufferLength);
+    
+    function checkVoiceActivity() {
+        analyzer.getByteFrequencyData(dataArray);
+        
+        // Calculate average volume
+        let sum = 0;
+        for(let i = 0; i < bufferLength; i++) {
+            sum += dataArray[i];
+        }
+        const average = sum / bufferLength;
+        
+        // Update UI based on voice activity
+        updateVoiceIndicator(average);
+        
+        requestAnimationFrame(checkVoiceActivity);
+    }
+    
+    checkVoiceActivity();
+}
+
+function updateVoiceIndicator(volume) {
+    const micButton = document.getElementById('mic-toggle');
+    const micStatus = document.getElementById('mic-status');
+    
+    if(!micButton || !micStatus) return;
+    
+    // Update visual indicator based on volume
+    if(volume > 30 && !isMicMuted) {
+        micButton.style.background = 'rgba(34, 197, 94, 0.3)'; // Green glow when speaking
+    } else {
+        micButton.style.background = '';
+    }
+}
+
+function toggleMicrophone() {
+    const button = document.getElementById('mic-toggle');
+    const status = document.getElementById('mic-status');
+    
+    if(!button || !status) return;
+    
+    isMicMuted = !isMicMuted;
+    
+    if(isMicMuted) {
+        status.textContent = '🔇 Mic Off';
+        button.classList.add('muted');
+        addSystemMessage('Microphone muted.');
+        
+        // Mute the audio stream
+        if(mediaStream) {
+            mediaStream.getAudioTracks().forEach(track => {
+                track.enabled = false;
+            });
+        }
+    } else {
+        status.textContent = '🎤 Mic On';
+        button.classList.remove('muted');
+        addSystemMessage('Microphone unmuted.');
+        
+        // Unmute the audio stream
+        if(mediaStream) {
+            mediaStream.getAudioTracks().forEach(track => {
+                track.enabled = true;
+            });
+        }
+    }
+}
+
+function toggleScreenShare() {
+    const button = document.getElementById('screen-share');
+    if(!button) return;
+    
+    if(!isScreenSharing) {
+        startScreenShare();
+    } else {
         stopScreenShare();
     }
-    
-    // Show dashboard, hide 3D space
-    const dashboard = document.getElementById('dashboard');
-    const metaverse = document.getElementById('metaverse-space');
-    
-    if(dashboard && metaverse) {
-        metaverse.classList.add('hidden');
-        dashboard.classList.remove('hidden');
-    }
-    
-    // Clean up 3D objects
-    if(renderer) {
-        renderer.dispose();
-        renderer = null;
-    }
-    
-    if(scene) {
-        scene.clear();
-        scene = null;
-    }
-    
-    // Reset variables
-    currentRoom = null;
-    avatar = null;
-    camera = null;
-    keys = {};
-    
-    console.log('Returned to dashboard');
 }
 
-// Enhanced walls function
-function createEnhancedWalls() {
-    // Floor with enhanced material
-    const floorGeometry = new THREE.PlaneGeometry(50, 50);
-    const floorMaterial = new THREE.MeshPhongMaterial({ 
-        color: 0x8B7355,
-        shininess: 10,
-        specular: 0x111111
-    });
-    const floor = new THREE.Mesh(floorGeometry, floorMaterial);
-    floor.rotation.x = -Math.PI / 2;
-    floor.position.y = 0;
-    floor.receiveShadow = true;
-    scene.add(floor);
-    
-    // Ceiling
-    const ceilingGeometry = new THREE.PlaneGeometry(50, 50);
-    const ceilingMaterial = new THREE.MeshPhongMaterial({ 
-        color: 0xF5F5F5,
-        shininess: 5
-    });
-    const ceiling = new THREE.Mesh(ceilingGeometry, ceilingMaterial);
-    ceiling.rotation.x = Math.PI / 2;
-    ceiling.position.y = 10;
-    scene.add(ceiling);
-    
-    // Enhanced walls
-    const wallMaterial = new THREE.MeshPhongMaterial({ 
-        color: 0xE8E8E8,
-        shininess: 5
-    });
-    
-    // North wall
-    const northWall = new THREE.Mesh(new THREE.PlaneGeometry(50, 10), wallMaterial);
-    northWall.position.set(0, 5, -25);
-    northWall.receiveShadow = true;
-    scene.add(northWall);
-    
-    // South wall
-    const southWall = new THREE.Mesh(new THREE.PlaneGeometry(50, 10), wallMaterial);
-    southWall.position.set(0, 5, 25);
-    southWall.receiveShadow = true;
-    scene.add(southWall);
-    
-    // East wall
-    const eastWall = new THREE.Mesh(new THREE.PlaneGeometry(50, 10), wallMaterial);
-    eastWall.rotation.y = Math.PI / 2;
-    eastWall.position.set(25, 5, 0);
-    eastWall.receiveShadow = true;
-    scene.add(eastWall);
-    
-    // West wall
-    const westWall = new THREE.Mesh(new THREE.PlaneGeometry(50, 10), wallMaterial);
-    westWall.rotation.y = Math.PI / 2;
-    westWall.position.set(-25, 5, 0);
-    westWall.receiveShadow = true;
-    scene.add(westWall);
+function startScreenShare() {
+    if(navigator.mediaDevices && navigator.mediaDevices.getDisplayMedia) {
+        navigator.mediaDevices.getDisplayMedia({ video: true, audio: true })
+            .then(stream => {
+                isScreenSharing = true;
+                const video = document.getElementById('shared-screen-video');
+                const sharedScreen = document.getElementById('shared-screen');
+                
+                if(video && sharedScreen) {
+                    video.srcObject = stream;
+                    sharedScreen.classList.remove('hidden');
+                }
+                
+                const button = document.getElementById('screen-share');
+                if(button) button.classList.add('active');
+                addSystemMessage('Screen sharing started.');
+                
+                stream.getVideoTracks()[0].addEventListener('ended', () => {
+                    stopScreenShare();
+                });
+            })
+            .catch(error => {
+                console.error('Error starting screen share:', error);
+                addSystemMessage('Screen sharing not available in this browser.');
+            });
+    } else {
+        addSystemMessage('Screen sharing not supported in this browser.');
+    }
 }
 
-// Add 3D effects for enhanced visual experience
-function add3DEffects() {
-    // Add floating particles for ambiance
-    const particleCount = 100;
-    const particles = new THREE.BufferGeometry();
-    const positions = new Float32Array(particleCount * 3);
+function stopScreenShare() {
+    const video = document.getElementById('shared-screen-video');
+    const sharedScreen = document.getElementById('shared-screen');
+    const button = document.getElementById('screen-share');
     
-    for (let i = 0; i < particleCount * 3; i += 3) {
-        positions[i] = (Math.random() - 0.5) * 40;     // x
-        positions[i + 1] = Math.random() * 8 + 2;      // y
-        positions[i + 2] = (Math.random() - 0.5) * 40; // z
+    if(video && video.srcObject) {
+        video.srcObject.getTracks().forEach(track => track.stop());
+        video.srcObject = null;
     }
     
-    particles.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    if(sharedScreen) sharedScreen.classList.add('hidden');
+    if(button) button.classList.remove('active');
     
-    const particleMaterial = new THREE.PointsMaterial({
-        color: 0x87CEEB,
-        size: 0.1,
-        transparent: true,
-        opacity: 0.6
+    isScreenSharing = false;
+    addSystemMessage('Screen sharing stopped.');
+}
+
+// Chat functions
+function toggleChat() {
+    const chatPanel = document.getElementById('chat-panel');
+    const button = document.getElementById('chat-toggle');
+    
+    if(!chatPanel || !button) return;
+    
+    if(chatPanel.classList.contains('hidden')) {
+        chatPanel.classList.remove('hidden');
+        button.classList.add('active');
+        const chatInput = document.getElementById('chat-input');
+        if(chatInput) chatInput.focus();
+    } else {
+        chatPanel.classList.add('hidden');
+        button.classList.remove('active');
+    }
+}
+
+function handleChatInput(event) {
+    if(event.key === 'Enter') {
+        sendMessage();
+    }
+}
+
+function sendMessage() {
+    const input = document.getElementById('chat-input');
+    if(!input) return;
+    
+    const message = input.value.trim();
+    
+    if(message) {
+        const avatarName = document.getElementById('avatar-name');
+        const senderName = (avatarName && avatarName.value) || 'Student';
+        addMessage(senderName, message);
+        input.value = '';
+        input.focus();
+    }
+}
+
+function addMessage(sender, text) {
+    const messagesContainer = document.getElementById('chat-messages');
+    if(!messagesContainer) return;
+    
+    const messageDiv = document.createElement('div');
+    messageDiv.className = 'chat-message';
+    
+    messageDiv.innerHTML = `
+        <div class="chat-message-sender">${sender}:</div>
+        <div class="chat-message-text">${text}</div>
+    `;
+    
+    messagesContainer.appendChild(messageDiv);
+    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    
+    chatMessages.push({ sender, text, timestamp: new Date() });
+}
+
+function addSystemMessage(text) {
+    const messagesContainer = document.getElementById('chat-messages');
+    if(!messagesContainer) return;
+    
+    const messageDiv = document.createElement('div');
+    messageDiv.className = 'chat-message';
+    messageDiv.style.opacity = '0.7';
+    
+    messageDiv.innerHTML = `
+        <div class="chat-message-sender">System:</div>
+        <div class="chat-message-text">${text}</div>
+    `;
+    
+    messagesContainer.appendChild(messageDiv);
+    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+}
+
+// AI-Generated Avatar Functions
+function loadAIGeneratedAvatar(avatarData) {
+    // Remove existing avatar
+    if(avatar) {
+        scene.remove(avatar);
+    }
+    
+    // Create human-like anime avatar
+    const mode = avatarData.mode || 'realistic';
+    const customizations = avatarData.customizations || {};
+    
+    // Create human-like avatar with anime style
+    avatar = createHumanLikeAvatar(mode, customizations, avatarData.url);
+    avatar.position.set(0, 0, 3);
+    avatar.castShadow = true;
+    
+    scene.add(avatar);
+    
+    let message = `Welcome ${avatarData.name}! Human-like ${mode} avatar loaded!`;
+    if(mode === 'realistic') {
+        message += ' This avatar is designed to match your photo!';
+    }
+    
+    addSystemMessage(message);
+    hideLoading();
+}
+
+function createHumanLikeAvatar(mode, customizations, photoUrl) {
+    const avatarGroup = new THREE.Group();
+    
+    // Head (anime style)
+    const headGeometry = new THREE.SphereGeometry(0.3, 16, 16);
+    const headMaterial = new THREE.MeshLambertMaterial({ 
+        color: getSkinToneColor(customizations.skinTone) 
+    });
+    const head = new THREE.Mesh(headGeometry, headMaterial);
+    head.position.set(0, 1.4, 0);
+    head.castShadow = true;
+    avatarGroup.add(head);
+    
+    // Hair
+    const hairGeometry = new THREE.SphereGeometry(0.35, 16, 16);
+    const hairMaterial = new THREE.MeshLambertMaterial({ 
+        color: getHairColor(customizations.hairColor) 
+    });
+    const hair = new THREE.Mesh(hairGeometry, hairMaterial);
+    hair.position.set(0, 1.5, 0);
+    hair.scale.set(1, 0.8, 1);
+    avatarGroup.add(hair);
+    
+    // Body (torso)
+    const bodyGeometry = new THREE.CylinderGeometry(0.25, 0.3, 0.8, 8);
+    const bodyMaterial = new THREE.MeshLambertMaterial({ color: getClothingColor(mode) });
+    const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
+    body.position.set(0, 0.8, 0);
+    body.castShadow = true;
+    avatarGroup.add(body);
+    
+    // Arms
+    const armGeometry = new THREE.CylinderGeometry(0.08, 0.1, 0.6, 6);
+    const armMaterial = new THREE.MeshLambertMaterial({ color: 0xfdbcb4 });
+    
+    const leftArm = new THREE.Mesh(armGeometry, armMaterial);
+    leftArm.position.set(-0.4, 0.9, 0);
+    leftArm.rotation.z = 0.3;
+    leftArm.castShadow = true;
+    avatarGroup.add(leftArm);
+    
+    const rightArm = new THREE.Mesh(armGeometry, armMaterial);
+    rightArm.position.set(0.4, 0.9, 0);
+    rightArm.rotation.z = -0.3;
+    rightArm.castShadow = true;
+    avatarGroup.add(rightArm);
+    
+    // Legs
+    const legGeometry = new THREE.CylinderGeometry(0.1, 0.12, 0.8, 6);
+    const legMaterial = new THREE.MeshLambertMaterial({ color: getClothingColor(mode) });
+    
+    const leftLeg = new THREE.Mesh(legGeometry, legMaterial);
+    leftLeg.position.set(-0.15, -0.4, 0);
+    leftLeg.castShadow = true;
+    avatarGroup.add(leftLeg);
+    
+    const rightLeg = new THREE.Mesh(legGeometry, legMaterial);
+    rightLeg.position.set(0.15, -0.4, 0);
+    rightLeg.castShadow = true;
+    avatarGroup.add(rightLeg);
+    
+    // Eyes
+    const eyeGeometry = new THREE.SphereGeometry(0.05, 8, 8);
+    const eyeMaterial = new THREE.MeshLambertMaterial({ color: 0x2c3e50 });
+    
+    const leftEye = new THREE.Mesh(eyeGeometry, eyeMaterial);
+    leftEye.position.set(-0.1, 1.45, 0.25);
+    avatarGroup.add(leftEye);
+    
+    const rightEye = new THREE.Mesh(eyeGeometry, eyeMaterial);
+    rightEye.position.set(0.1, 1.45, 0.25);
+    avatarGroup.add(rightEye);
+    
+    // Add photo texture to head for realistic mode
+    if(mode === 'realistic' && photoUrl) {
+        addPhotoTextureToHead(head, photoUrl);
+    }
+    
+    // Add special effects based on mode
+    addHumanAvatarEffects(avatarGroup, mode);
+    
+    // Add body part labels for animation
+    addBodyPartLabels(avatarGroup);
+    
+    return avatarGroup;
+}
+
+function getSkinToneColor(skinTone) {
+    const skinColors = {
+        'auto': 0xfdbcb4,
+        'light': 0xfdbcb4,
+        'medium': 0xe8a87c,
+        'dark': 0x8b4513
+    };
+    return skinColors[skinTone] || skinColors['medium'];
+}
+
+function getHairColor(hairColor) {
+    const hairColors = {
+        'auto': 0x2c3e50,
+        'black': 0x2c3e50,
+        'brown': 0x8b4513,
+        'blonde': 0xf4d03f,
+        'red': 0xe74c3c,
+        'gray': 0x95a5a6
+    };
+    return hairColors[hairColor] || hairColors['black'];
+}
+
+function getEyeColor(eyeColor) {
+    const eyeColors = {
+        'auto': 0x2c3e50,
+        'brown': 0x8b4513,
+        'blue': 0x3498db,
+        'green': 0x2ecc71,
+        'hazel': 0x8b4513
+    };
+    return eyeColors[eyeColor] || eyeColors['brown'];
+}
+
+function getClothingColor(mode) {
+    const clothingColors = {
+        'realistic': 0x34495e,
+        'stylized': 0xe74c3c,
+        'cartoon': 0x9b59b6
+    };
+    return clothingColors[mode] || clothingColors['realistic'];
+}
+
+function addPhotoTextureToHead(head, photoUrl) {
+    const textureLoader = new THREE.TextureLoader();
+    textureLoader.load(photoUrl, function(texture) {
+        const material = new THREE.MeshLambertMaterial({ 
+            map: texture,
+            transparent: true,
+            opacity: 0.8
+        });
+        head.material = material;
+    });
+}
+
+function addHumanAvatarEffects(avatarGroup, mode) {
+    // Add special lighting effects
+    const light = new THREE.PointLight(0xffffff, 0.5, 3);
+    light.position.set(0, 1.5, 0);
+    avatarGroup.add(light);
+    
+    // Add mode-specific effects
+    switch(mode) {
+        case 'stylized':
+            const stylizedGlow = new THREE.PointLight(0xff6b6b, 0.3, 2);
+            stylizedGlow.position.set(0, 1.2, 0);
+            avatarGroup.add(stylizedGlow);
+            break;
+        case 'cartoon':
+            const cartoonGlow = new THREE.PointLight(0x4ecdc4, 0.4, 2.5);
+            cartoonGlow.position.set(0, 1.3, 0);
+            avatarGroup.add(cartoonGlow);
+            break;
+    }
+}
+
+function addPhotoTextureTo3DAvatar(avatar, photoSrc) {
+    // Add photo texture to 3D avatar to make it look more like the person
+    const textureLoader = new THREE.TextureLoader();
+    textureLoader.load(photoSrc, function(texture) {
+        // Create a material that combines the photo with the avatar
+        const material = new THREE.MeshLambertMaterial({ 
+            map: texture,
+            transparent: true,
+            opacity: 0.7,
+            side: THREE.DoubleSide
+        });
+        avatar.material = material;
+        
+        // Add a subtle glow effect
+        const glowGeometry = new THREE.CylinderGeometry(0.52, 0.52, 1.52, 8);
+        const glowMaterial = new THREE.MeshBasicMaterial({ 
+            color: 0xffffff, 
+            transparent: true, 
+            opacity: 0.1 
+        });
+        const glow = new THREE.Mesh(glowGeometry, glowMaterial);
+        avatar.add(glow);
+        
+        console.log('Photo texture applied to 3D avatar');
+    }, undefined, function(error) {
+        console.warn('Could not load photo texture:', error);
+    });
+}
+
+function addAIAvatarEffects(avatar, mode) {
+    // Add special effects based on generation mode
+    switch(mode) {
+        case 'realistic':
+            // Subtle realistic lighting
+            const realisticLight = new THREE.PointLight(0xffffff, 0.3, 5);
+            realisticLight.position.set(0, 1, 0);
+            avatar.add(realisticLight);
+            break;
+        case 'stylized':
+            // Artistic glow
+            const stylizedLight = new THREE.PointLight(0xff6b6b, 0.4, 6);
+            stylizedLight.position.set(0, 1.5, 0);
+            avatar.add(stylizedLight);
+            break;
+        case 'cartoon':
+            // Fun, colorful effects
+            const cartoonLight = new THREE.PointLight(0x4ecdc4, 0.5, 7);
+            cartoonLight.position.set(0, 1.2, 0);
+            avatar.add(cartoonLight);
+            break;
+    }
+}
+
+// Human-like Avatar Functions
+function createPresetHumanAvatar(preset, color, size) {
+    const avatarGroup = new THREE.Group();
+    
+    // Base human structure
+    const headGeometry = new THREE.SphereGeometry(0.3, 16, 16);
+    const headMaterial = new THREE.MeshLambertMaterial({ color: 0xfdbcb4 });
+    const head = new THREE.Mesh(headGeometry, headMaterial);
+    head.position.set(0, 1.4, 0);
+    head.castShadow = true;
+    avatarGroup.add(head);
+    
+    // Hair
+    const hairGeometry = new THREE.SphereGeometry(0.35, 16, 16);
+    const hairMaterial = new THREE.MeshLambertMaterial({ color: getPresetHairColor(preset) });
+    const hair = new THREE.Mesh(hairGeometry, hairMaterial);
+    hair.position.set(0, 1.5, 0);
+    hair.scale.set(1, 0.8, 1);
+    avatarGroup.add(hair);
+    
+    // Body
+    const bodyGeometry = new THREE.CylinderGeometry(0.25, 0.3, 0.8, 8);
+    const bodyMaterial = new THREE.MeshLambertMaterial({ color: getPresetClothingColor(preset) });
+    const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
+    body.position.set(0, 0.8, 0);
+    body.castShadow = true;
+    avatarGroup.add(body);
+    
+    // Arms
+    const armGeometry = new THREE.CylinderGeometry(0.08, 0.1, 0.6, 6);
+    const armMaterial = new THREE.MeshLambertMaterial({ color: 0xfdbcb4 });
+    
+    const leftArm = new THREE.Mesh(armGeometry, armMaterial);
+    leftArm.position.set(-0.4, 0.9, 0);
+    leftArm.rotation.z = 0.3;
+    leftArm.castShadow = true;
+    avatarGroup.add(leftArm);
+    
+    const rightArm = new THREE.Mesh(armGeometry, armMaterial);
+    rightArm.position.set(0.4, 0.9, 0);
+    rightArm.rotation.z = -0.3;
+    rightArm.castShadow = true;
+    avatarGroup.add(rightArm);
+    
+    // Legs
+    const legGeometry = new THREE.CylinderGeometry(0.1, 0.12, 0.8, 6);
+    const legMaterial = new THREE.MeshLambertMaterial({ color: getPresetClothingColor(preset) });
+    
+    const leftLeg = new THREE.Mesh(legGeometry, legMaterial);
+    leftLeg.position.set(-0.15, -0.4, 0);
+    leftLeg.castShadow = true;
+    avatarGroup.add(leftLeg);
+    
+    const rightLeg = new THREE.Mesh(legGeometry, legMaterial);
+    rightLeg.position.set(0.15, -0.4, 0);
+    rightLeg.castShadow = true;
+    avatarGroup.add(rightLeg);
+    
+    // Eyes
+    const eyeGeometry = new THREE.SphereGeometry(0.05, 8, 8);
+    const eyeMaterial = new THREE.MeshLambertMaterial({ color: 0x2c3e50 });
+    
+    const leftEye = new THREE.Mesh(eyeGeometry, eyeMaterial);
+    leftEye.position.set(-0.1, 1.45, 0.25);
+    avatarGroup.add(leftEye);
+    
+    const rightEye = new THREE.Mesh(eyeGeometry, eyeMaterial);
+    rightEye.position.set(0.1, 1.45, 0.25);
+    avatarGroup.add(rightEye);
+    
+    // Add preset-specific features
+    addPresetSpecialFeatures(avatarGroup, preset);
+    
+    // Add body part labels for animation
+    addBodyPartLabels(avatarGroup);
+    
+    // Apply size scaling
+    avatarGroup.scale.setScalar(size);
+    
+    return avatarGroup;
+}
+
+function getPresetHairColor(preset) {
+    const hairColors = {
+        'male1': 0x2c3e50,
+        'female1': 0xe74c3c,
+        'male2': 0x8b4513,
+        'female2': 0xf4d03f,
+        'ninja': 0x2c3e50,
+        'robot': 0x95a5a6,
+        'wizard': 0x9b59b6,
+        'superhero': 0xe74c3c,
+        'dragon': 0x8b4513,
+        'phoenix': 0xf39c12,
+        'cosmic': 0x3498db,
+        'legendary': 0xf1c40f
+    };
+    return hairColors[preset] || 0x2c3e50;
+}
+
+function getPresetClothingColor(preset) {
+    const clothingColors = {
+        'male1': 0x4a90e2,
+        'female1': 0xe24a90,
+        'male2': 0x2ecc71,
+        'female2': 0xf39c12,
+        'ninja': 0x2c3e50,
+        'robot': 0x95a5a6,
+        'wizard': 0x9b59b6,
+        'superhero': 0xe74c3c,
+        'dragon': 0x8b4513,
+        'phoenix': 0xf39c12,
+        'cosmic': 0x3498db,
+        'legendary': 0xf1c40f
+    };
+    return clothingColors[preset] || 0x4a90e2;
+}
+
+function addPresetSpecialFeatures(avatarGroup, preset) {
+    // Add special features based on preset
+    switch(preset) {
+        case 'ninja':
+            // Add ninja mask
+            const maskGeometry = new THREE.SphereGeometry(0.32, 16, 16);
+            const maskMaterial = new THREE.MeshLambertMaterial({ color: 0x2c3e50, transparent: true, opacity: 0.8 });
+            const mask = new THREE.Mesh(maskGeometry, maskMaterial);
+            mask.position.set(0, 1.4, 0);
+            mask.scale.set(1, 0.6, 1);
+            avatarGroup.add(mask);
+            break;
+        case 'robot':
+            // Add robot antenna
+            const antennaGeometry = new THREE.CylinderGeometry(0.02, 0.02, 0.3, 4);
+            const antennaMaterial = new THREE.MeshLambertMaterial({ color: 0x95a5a6 });
+            const antenna = new THREE.Mesh(antennaGeometry, antennaMaterial);
+            antenna.position.set(0, 1.8, 0);
+            avatarGroup.add(antenna);
+            break;
+        case 'wizard':
+            // Add wizard hat
+            const hatGeometry = new THREE.ConeGeometry(0.3, 0.4, 8);
+            const hatMaterial = new THREE.MeshLambertMaterial({ color: 0x9b59b6 });
+            const hat = new THREE.Mesh(hatGeometry, hatMaterial);
+            hat.position.set(0, 1.8, 0);
+            avatarGroup.add(hat);
+            break;
+        case 'superhero':
+            // Add cape
+            const capeGeometry = new THREE.PlaneGeometry(0.8, 1.2);
+            const capeMaterial = new THREE.MeshLambertMaterial({ color: 0xe74c3c, side: THREE.DoubleSide });
+            const cape = new THREE.Mesh(capeGeometry, capeMaterial);
+            cape.position.set(0, 0.8, -0.3);
+            cape.rotation.x = 0.2;
+            avatarGroup.add(cape);
+            break;
+    }
+    
+    // Add special lighting effects
+    const light = new THREE.PointLight(0xffffff, 0.5, 3);
+    light.position.set(0, 1.5, 0);
+    avatarGroup.add(light);
+}
+
+// Multiplayer functions
+function createOtherAvatar(userId, name, position, preset = 'male1') {
+    // Create avatar for another user
+    let avatarColor = 0x00aaff;
+    let avatarScale = 1;
+    
+            avatarColor = 0xf39c12;
+            avatarScale = 0.9;
+            break;
+    }
+    
+    const avatarGeometry = new THREE.CylinderGeometry(0.5, 0.5, 1.5, 8);
+    const avatarMaterial = new THREE.MeshLambertMaterial({ color: avatarColor });
+    const otherAvatar = new THREE.Mesh(avatarGeometry, avatarMaterial);
+    otherAvatar.scale.set(avatarScale, avatarScale, avatarScale);
+    otherAvatar.position.set(position.x, 0.75, position.z);
+    otherAvatar.castShadow = true;
+    otherAvatar.userData = { userId, name, type: 'other-user' };
+    
+    // Add name label above avatar
+    const nameLabel = createNameLabel(name);
+    nameLabel.position.set(0, 2.5, 0);
+    otherAvatar.add(nameLabel);
+    
+    scene.add(otherAvatar);
+    otherAvatars.push(otherAvatar);
+    
+    return otherAvatar;
+}
+
+function createNameLabel(name) {
+    const canvas = document.createElement('canvas');
+    const context = canvas.getContext('2d');
+    canvas.width = 256;
+    canvas.height = 64;
+    
+    context.fillStyle = 'rgba(0, 0, 0, 0.8)';
+    context.fillRect(0, 0, canvas.width, canvas.height);
+    
+    context.fillStyle = 'white';
+    context.font = '24px Arial';
+    context.textAlign = 'center';
+    context.fillText(name, canvas.width / 2, canvas.height / 2 + 8);
+    
+    const texture = new THREE.CanvasTexture(canvas);
+    const material = new THREE.SpriteMaterial({ map: texture });
+    const sprite = new THREE.Sprite(material);
+    sprite.scale.set(2, 0.5, 1);
+    
+    return sprite;
+}
+
+function simulateOtherUsers() {
+    // Simulate other users joining the room
+    setTimeout(() => {
+        if(Math.random() > 0.5) {
+            const otherUser = createOtherAvatar(
+                'user2',
+                'Alex',
+                { x: 2, z: 2 },
+                'female1'
+            );
+            userCount++;
+            updateUserCount();
+            addSystemMessage('Alex joined the room');
+        }
+    }, 3000);
+    
+    setTimeout(() => {
+        if(Math.random() > 0.5) {
+            const otherUser = createOtherAvatar(
+                'user3',
+                'Jordan',
+                { x: -2, z: 1 },
+                'male2'
+            );
+            userCount++;
+            updateUserCount();
+            addSystemMessage('Jordan joined the room');
+        }
+    }, 6000);
+    
+    setTimeout(() => {
+        if(Math.random() > 0.5) {
+            const otherUser = createOtherAvatar(
+                'user4',
+                'Sam',
+                { x: 1, z: -2 },
+                'female2'
+            );
+            userCount++;
+            updateUserCount();
+            addSystemMessage('Sam joined the room');
+        }
+    }, 9000);
+}
+
+function updateUserCount() {
+    const userCountElement = document.getElementById('user-count');
+    if(userCountElement) {
+        userCountElement.textContent = `${userCount} user${userCount > 1 ? 's' : ''} online`;
+    }
+}
+
+function animateOtherAvatars() {
+    // Simple animation for other avatars (idle movement)
+    otherAvatars.forEach(avatar => {
+        if(avatar && avatar.position) {
+            // Gentle bobbing motion
+            avatar.position.y = 0.75 + Math.sin(Date.now() * 0.001 + avatar.userData.userId.charCodeAt(0)) * 0.02;
+            
+            // Slight rotation
+            avatar.rotation.y += 0.005;
+        }
+    });
+}
+
+// Animation and render loop
+function animate() {
+    if(!renderer || !scene || !camera) return;
+    
+    requestAnimationFrame(animate);
+    
+    // Update avatar mixer
+    if(avatarMixer) {
+        avatarMixer.update(0.016);
+    }
+    
+    // Handle movement
+    handleMovement();
+    
+    // Animate other avatars
+    animateOtherAvatars();
+    
+    // Update camera
+    updateCamera();
+    
+    // Animate particles if available
+    if(window.animateParticles) {
+        window.animateParticles();
+    }
+    
+    // Render
+    renderer.render(scene, camera);
+}
+
+// Movement handling
+function handleMovement() {
+    if(!avatar) return;
+    
+    // Enhanced movement system with collision detection
+    const baseSpeed = 0.06; // Slower base movement speed
+    const runMultiplier = keys['ShiftLeft'] || keys['ShiftRight'] ? 1.8 : 1.0;
+    const moveSpeed = baseSpeed * runMultiplier;
+    
+    // Store current position for reverting if collision occurs
+    const originalPosition = avatar.position.clone();
+    let moved = false;
+    
+    // Get camera direction for relative movement
+    const cameraDirection = new THREE.Vector3();
+    camera.getWorldDirection(cameraDirection);
+    cameraDirection.y = 0; // Keep movement on horizontal plane
+    cameraDirection.normalize();
+    
+    // Calculate right vector
+    const rightVector = new THREE.Vector3();
+    rightVector.crossVectors(cameraDirection, new THREE.Vector3(0, 1, 0));
+    rightVector.normalize();
+    
+    // Store old position for collision detection
+    const oldPosition = avatar.position.clone();
+    
+    // Forward/backward movement
+    if(keys['KeyW'] || keys['ArrowUp']) {
+        const newPosition = avatar.position.clone().add(cameraDirection.clone().multiplyScalar(moveSpeed));
+        if (!checkCollision(newPosition)) {
+            avatar.position.copy(newPosition);
+            moved = true;
+        }
+    }
+    if(keys['KeyS'] || keys['ArrowDown']) {
+        const newPosition = avatar.position.clone().add(cameraDirection.clone().multiplyScalar(-moveSpeed));
+        if (!checkCollision(newPosition)) {
+            avatar.position.copy(newPosition);
+            moved = true;
+        }
+    }
+    
+    // Left/right movement (strafing)
+    if(keys['KeyA'] || keys['ArrowLeft']) {
+        const newPosition = avatar.position.clone().add(rightVector.clone().multiplyScalar(-moveSpeed));
+        if (!checkCollision(newPosition)) {
+            avatar.position.copy(newPosition);
+            moved = true;
+        }
+    }
+    if(keys['KeyD'] || keys['ArrowRight']) {
+        const newPosition = avatar.position.clone().add(rightVector.clone().multiplyScalar(moveSpeed));
+        if (!checkCollision(newPosition)) {
+            avatar.position.copy(newPosition);
+            moved = true;
+        }
+        moved = true;
+    }
+    
+    // Enhanced jumping system
+    if(keys['Space'] && avatar.position.y <= 0.75) {
+        avatar.position.y += 0.4;
+        addSystemMessage('Jump!');
+    }
+    
+    // Apply gravity
+    if(avatar.position.y > 0.75) {
+        avatar.position.y -= 0.08;
+        if(avatar.position.y < 0.75) {
+            avatar.position.y = 0.75;
+        }
+    }
+    
+    // Collision detection with room boundaries
+    const roomBounds = 15; // Larger room for better movement
+    if(avatar.position.x > roomBounds) {
+        avatar.position.x = roomBounds;
+    }
+    if(avatar.position.x < -roomBounds) {
+        avatar.position.x = -roomBounds;
+    }
+    if(avatar.position.z > roomBounds) {
+        avatar.position.z = roomBounds;
+    }
+    if(avatar.position.z < -roomBounds) {
+        avatar.position.z = -roomBounds;
+    }
+    
+    // Update avatar rotation based on movement direction
+    if(moved) {
+        const moveDirection = new THREE.Vector3();
+        if(keys['KeyW'] || keys['ArrowUp']) moveDirection.add(cameraDirection);
+        if(keys['KeyS'] || keys['ArrowDown']) moveDirection.add(cameraDirection.clone().multiplyScalar(-1));
+        if(keys['KeyA'] || keys['ArrowLeft']) moveDirection.add(rightVector.clone().multiplyScalar(-1));
+        if(keys['KeyD'] || keys['ArrowRight']) moveDirection.add(rightVector);
+        
+        if(moveDirection.length() > 0) {
+            moveDirection.normalize();
+            const targetRotation = Math.atan2(moveDirection.x, moveDirection.z);
+            avatar.rotation.y = targetRotation;
+        }
+    }
+    
+    // Animate avatar based on movement
+    animateAvatarMovement(moved, keys['ShiftLeft'] || keys['ShiftRight']);
+    
+    // Update camera position for first-person view
+    if(cameraMode === 'first-person') {
+        camera.position.set(
+            avatar.position.x,
+            avatar.position.y + 1.6, // Eye level
+            avatar.position.z
+        );
+    }
+}
+
+function updateCamera() {
+    if(!avatar || !camera) return;
+    
+    switch(cameraMode) {
+        case 'first-person':
+            // First-person camera - camera is at avatar's eye level with mouse look
+            camera.position.set(
+                avatar.position.x,
+                avatar.position.y + 1.6, // Eye level
+                avatar.position.z
+            );
+            
+            // Enhanced mouse look for first-person gaming experience
+            if(isPointerLocked) {
+                camera.rotation.y -= mouseX * mouseSensitivity;
+                camera.rotation.x -= mouseY * mouseSensitivity;
+                camera.rotation.x = Math.max(-Math.PI/2, Math.min(Math.PI/2, camera.rotation.x));
+                
+                // Update avatar rotation based on camera rotation
+                avatar.rotation.y = camera.rotation.y;
+            } else {
+                camera.rotation.copy(avatar.rotation);
+            }
+            break;
+            
+        case 'third-person':
+            // Third-person camera - follows behind avatar with mouse look
+            if(isPointerLocked) {
+                // Mouse look for third-person
+                cameraControls.angle -= mouseX * mouseSensitivity;
+                cameraControls.height = Math.max(0.5, Math.min(3, cameraControls.height - mouseY * 0.1));
+            }
+            
+            const cameraOffset = new THREE.Vector3(
+                -Math.sin(avatar.rotation.y + cameraControls.angle) * cameraControls.distance,
+                cameraControls.height,
+                -Math.cos(avatar.rotation.y + cameraControls.angle) * cameraControls.distance
+            );
+            camera.position.copy(avatar.position).add(cameraOffset);
+            camera.lookAt(avatar.position.x, avatar.position.y + 1, avatar.position.z);
+            break;
+            
+        case 'free-look':
+            // Free-look camera - can be controlled independently
+            if(isPointerLocked) {
+                // Update camera rotation based on mouse movement
+                camera.rotation.y -= mouseX * mouseSensitivity;
+                camera.rotation.x -= mouseY * mouseSensitivity;
+                camera.rotation.x = Math.max(-Math.PI/2, Math.min(Math.PI/2, camera.rotation.x));
+            }
+            break;
+    }
+}
+
+// Camera view switching
+function setCameraView(mode) {
+    cameraMode = mode;
+    
+    // Update button states
+    document.querySelectorAll('.control-btn').forEach(btn => {
+        btn.classList.remove('active');
     });
     
-    const particleSystem = new THREE.Points(particles, particleMaterial);
-    scene.add(particleSystem);
-    
-    // Add subtle animation to particles
-    function animateParticles() {
-        particleSystem.rotation.y += 0.001;
-        particleSystem.rotation.x += 0.0005;
+    const activeBtn = document.querySelector(`[onclick="setCameraView('${mode}')"]`);
+    if(activeBtn) {
+        activeBtn.classList.add('active');
     }
     
-    // Store animation function for render loop
-    window.animateParticles = animateParticles;
+    // Handle pointer lock for free-look mode
+    if(mode === 'free-look') {
+        requestPointerLock();
+    } else {
+        exitPointerLock();
+    }
+    
+    addSystemMessage(`Camera mode: ${mode.replace('-', ' ')}`);
 }
+
+function requestPointerLock() {
+    const canvas = document.getElementById('three-canvas');
+    if(canvas && canvas.requestPointerLock) {
+        canvas.requestPointerLock();
+    }
+}
+
+function exitPointerLock() {
+    if(document.exitPointerLock) {
+        document.exitPointerLock();
+    }
+}
+
+// Event handlers
+function onKeyDown(event) {
+    keys[event.code] = true;
+}
+
+function onKeyUp(event) {
+    keys[event.code] = false;
+}
+
+function onMouseMove(event) {
+    if(isPointerLocked) {
+        // For pointer lock mode, use movement deltas
+        mouseX = event.movementX || 0;
+        mouseY = event.movementY || 0;
+    } else {
+        // For normal mode, use screen coordinates
+    mouseX = (event.clientX / window.innerWidth) * 2 - 1;
+    mouseY = -(event.clientY / window.innerHeight) * 2 + 1;
+    }
+}
+
+function onPointerLockChange() {
+    isPointerLocked = document.pointerLockElement === document.getElementById('three-canvas');
+    
+    if(isPointerLocked) {
+        addSystemMessage('Pointer locked - Mouse controls active');
+    } else {
+        addSystemMessage('Pointer unlocked');
+    }
+}
+
+function onPointerLockError() {
+    console.error('Pointer lock failed');
+    addSystemMessage('Pointer lock failed - Some features may not work');
+}
+
+function onMouseClick(event) {
+    if(!isPointerLocked || !scene || !camera) return;
+    
+    // Raycast to detect clicked objects
+    const raycaster = new THREE.Raycaster();
+    const mouse = new THREE.Vector2(0, 0); // Center of screen for pointer lock
+    raycaster.setFromCamera(mouse, camera);
+    
+    const intersects = raycaster.intersectObjects(scene.children, true);
+    
+    if(intersects.length > 0) {
+        const clickedObject = intersects[0].object;
+        if(clickedObject.userData && clickedObject.userData.type === 'interactive') {
+            handleObjectInteraction(clickedObject);
+        }
+    }
+}
+
+function handleObjectInteraction(object) {
+    const objectName = object.userData.name;
+    
+    switch(objectName) {
+        case 'conference-table':
+            addSystemMessage('You clicked on the conference table - Meeting mode activated!');
+            activateMeetingMode();
+            break;
+        case 'whiteboard':
+            addSystemMessage('You clicked on the whiteboard - Drawing mode activated!');
+            activateWhiteboardMode();
+            break;
+        default:
+            if(objectName.startsWith('chair-')) {
+                const seatNumber = object.userData.seatNumber;
+                addSystemMessage(`You clicked on chair ${seatNumber + 1} - Sitting down...`);
+                sitInChair(seatNumber);
+            }
+            break;
+    }
+}
+
+function activateMeetingMode() {
+    // Award points for starting a meeting
+    addScore(100);
+    
+    // Show meeting controls
+    addSystemMessage('Meeting mode activated! You can now:');
+    addSystemMessage('- Share your screen with other participants');
+    addSystemMessage('- Use voice chat for discussions');
+    addSystemMessage('- Take meeting notes on the whiteboard');
+    addSystemMessage('- Invite others to join the meeting');
+    
+    // Enable enhanced voice chat
+    if(mediaStream) {
+        addSystemMessage('Voice chat enhanced for meeting mode');
+    }
+}
+
+function activateWhiteboardMode() {
+    // Award points for using whiteboard
+    addScore(50);
+    
+    addSystemMessage('Whiteboard mode activated!');
+    addSystemMessage('Click and drag to draw on the whiteboard');
+    addSystemMessage('Press ESC to exit whiteboard mode');
+    
+    // In a real implementation, you would:
+    // 1. Switch to drawing mode
+    // 2. Enable mouse/touch drawing
+    // 3. Show drawing tools (pen, eraser, colors)
+    // 4. Allow saving/loading drawings
+}
+
+function sitInChair(seatNumber) {
+    // Award points for sitting
+    addScore(25);
+    
+    // Move avatar to chair position
+    if(avatar) {
+        const chairPositions = [
+            { x: 0, z: 4.5 },      // North
+            { x: 3.2, z: 3.2 },    // Northeast
+            { x: 4.5, z: 0 },      // East
+            { x: 3.2, z: -3.2 },   // Southeast
+            { x: 0, z: -4.5 },     // South
+            { x: -3.2, z: -3.2 },  // Southwest
+            { x: -4.5, z: 0 },     // West
+            { x: -3.2, z: 3.2 }    // Northwest
+        ];
+        
+        const targetPosition = chairPositions[seatNumber];
+        if(targetPosition) {
+            // Smooth movement to chair
+            animateToPosition(avatar, targetPosition);
+            addSystemMessage(`Sitting in chair ${seatNumber + 1} - Perfect for meetings!`);
+        }
+    }
+}
+
+function animateToPosition(object, targetPosition) {
+    const startPosition = object.position.clone();
+    const duration = 1000; // 1 second
+    const startTime = Date.now();
+    
+    function animate() {
+        const elapsed = Date.now() - startTime;
+        const progress = Math.min(elapsed / duration, 1);
+        
+        // Easing function for smooth movement
+        const easeProgress = 1 - Math.pow(1 - progress, 3);
+        
+        object.position.lerpVectors(startPosition, new THREE.Vector3(targetPosition.x, 0.75, targetPosition.z), easeProgress);
+        
+        if(progress < 1) {
+            requestAnimationFrame(animate);
+        }
+    }
+    
+    animate();
+}
+
+function onWindowResize() {
+    if(!camera || !renderer) return;
+    
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+}
+
+// Communication functions
+function initializeCommunication() {
+    console.log('Initializing communication...');
+    addSystemMessage('Communication system ready. Click buttons to activate features.');
+    
+    // Initialize WebRTC for voice chat
+    initializeWebRTC();
+}
+
+function initializeWebRTC() {
+    // Check for WebRTC support
+    if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        console.warn('WebRTC not supported in this browser');
+        addSystemMessage('Voice chat not supported in this browser');
+        return;
+    }
+    
+    // Request microphone access
+    navigator.mediaDevices.getUserMedia({ audio: true })
+        .then(stream => {
+            mediaStream = stream;
+            console.log('Microphone access granted');
+            addSystemMessage('Microphone ready - Voice chat available');
+            
+            // Set up audio context for voice processing
+            setupAudioContext(stream);
+        })
+        .catch(error => {
+            console.error('Microphone access denied:', error);
+            addSystemMessage('Microphone access denied - Voice chat unavailable');
+        });
+}
+
+function setupAudioContext(stream) {
+    try {
+        audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        const source = audioContext.createMediaStreamSource(stream);
+        
+        // Create audio analyzer for voice activity detection
+        analyzer = audioContext.createAnalyser();
+        analyzer.fftSize = 256;
+        source.connect(analyzer);
+        
+        // Monitor voice activity
+        monitorVoiceActivity(analyzer);
+        
+        // Setup audio output for hearing other characters
+        setupAudioOutput();
+        
+        addSystemMessage('Voice chat and audio output initialized!');
+        
+    } catch(error) {
+        console.error('Audio context setup failed:', error);
+    }
+}
+
+function monitorVoiceActivity(analyzer) {
+    const bufferLength = analyzer.frequencyBinCount;
+    const dataArray = new Uint8Array(bufferLength);
+    
+    function checkVoiceActivity() {
+        analyzer.getByteFrequencyData(dataArray);
+        
+        // Calculate average volume
+        let sum = 0;
+        for(let i = 0; i < bufferLength; i++) {
+            sum += dataArray[i];
+        }
+        const average = sum / bufferLength;
+        
+        // Update UI based on voice activity
+        updateVoiceIndicator(average);
+        
+        requestAnimationFrame(checkVoiceActivity);
+    }
+    
+    checkVoiceActivity();
+}
+
+function updateVoiceIndicator(volume) {
+    const micButton = document.getElementById('mic-toggle');
+    const micStatus = document.getElementById('mic-status');
+    
+    if(!micButton || !micStatus) return;
+    
+    // Update visual indicator based on volume
+    if(volume > 30 && !isMicMuted) {
+        micButton.style.background = 'rgba(34, 197, 94, 0.3)'; // Green glow when speaking
+    } else {
+        micButton.style.background = '';
+    }
+}
+
+function toggleMicrophone() {
+    const button = document.getElementById('mic-toggle');
+    const status = document.getElementById('mic-status');
+    
+    if(!button || !status) return;
+    
+    isMicMuted = !isMicMuted;
+    
+    if(isMicMuted) {
+        status.textContent = '🔇 Mic Off';
+        button.classList.add('muted');
+        addSystemMessage('Microphone muted.');
+        
+        // Mute the audio stream
+        if(mediaStream) {
+            mediaStream.getAudioTracks().forEach(track => {
+                track.enabled = false;
+            });
+        }
+    } else {
+        status.textContent = '🎤 Mic On';
+        button.classList.remove('muted');
+        addSystemMessage('Microphone unmuted.');
+        
+        // Unmute the audio stream
+        if(mediaStream) {
+            mediaStream.getAudioTracks().forEach(track => {
+                track.enabled = true;
+            });
+        }
+    }
+}
+
+function toggleScreenShare() {
+    const button = document.getElementById('screen-share');
+    if(!button) return;
+    
+    if(!isScreenSharing) {
+        startScreenShare();
+    } else {
+        stopScreenShare();
+    }
+}
+
+function startScreenShare() {
+    if(navigator.mediaDevices && navigator.mediaDevices.getDisplayMedia) {
+        navigator.mediaDevices.getDisplayMedia({ video: true, audio: true })
+            .then(stream => {
+                isScreenSharing = true;
+                const video = document.getElementById('shared-screen-video');
+                const sharedScreen = document.getElementById('shared-screen');
+                
+                if(video && sharedScreen) {
+                    video.srcObject = stream;
+                    sharedScreen.classList.remove('hidden');
+                }
+                
+                const button = document.getElementById('screen-share');
+                if(button) button.classList.add('active');
+                addSystemMessage('Screen sharing started.');
+                
+                stream.getVideoTracks()[0].addEventListener('ended', () => {
+                    stopScreenShare();
+                });
+            })
+            .catch(error => {
+                console.error('Error starting screen share:', error);
+                addSystemMessage('Screen sharing not available in this browser.');
+            });
+    } else {
+        addSystemMessage('Screen sharing not supported in this browser.');
+    }
+}
+
+function stopScreenShare() {
+    const video = document.getElementById('shared-screen-video');
+    const sharedScreen = document.getElementById('shared-screen');
+    const button = document.getElementById('screen-share');
+    
+    if(video && video.srcObject) {
+        video.srcObject.getTracks().forEach(track => track.stop());
+        video.srcObject = null;
+    }
+    
+    if(sharedScreen) sharedScreen.classList.add('hidden');
+    if(button) button.classList.remove('active');
+    
+    isScreenSharing = false;
+    addSystemMessage('Screen sharing stopped.');
+}
+
+// Chat functions
+function toggleChat() {
+    const chatPanel = document.getElementById('chat-panel');
+    const button = document.getElementById('chat-toggle');
+    
+    if(!chatPanel || !button) return;
+    
+    if(chatPanel.classList.contains('hidden')) {
+        chatPanel.classList.remove('hidden');
+        button.classList.add('active');
+        const chatInput = document.getElementById('chat-input');
+        if(chatInput) chatInput.focus();
+    } else {
+        chatPanel.classList.add('hidden');
+        button.classList.remove('active');
+    }
+}
+
+function handleChatInput(event) {
+    if(event.key === 'Enter') {
+        sendMessage();
+    }
+}
+
+function sendMessage() {
+    const input = document.getElementById('chat-input');
+    if(!input) return;
+    
+    const message = input.value.trim();
+    
+    if(message) {
+        const avatarName = document.getElementById('avatar-name');
+        const senderName = (avatarName && avatarName.value) || 'Student';
+        addMessage(senderName, message);
+        input.value = '';
+        input.focus();
+    }
+}
+
+function addMessage(sender, text) {
+    const messagesContainer = document.getElementById('chat-messages');
+    if(!messagesContainer) return;
+    
+    const messageDiv = document.createElement('div');
+    messageDiv.className = 'chat-message';
+    
+    messageDiv.innerHTML = `
+        <div class="chat-message-sender">${sender}:</div>
+        <div class="chat-message-text">${text}</div>
+    `;
+    
+    messagesContainer.appendChild(messageDiv);
+    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    
+    chatMessages.push({ sender, text, timestamp: new Date() });
+}
+
+function addSystemMessage(text) {
+    const messagesContainer = document.getElementById('chat-messages');
+    if(!messagesContainer) return;
+    
+    const messageDiv = document.createElement('div');
+    messageDiv.className = 'chat-message';
+    messageDiv.style.opacity = '0.7';
+    
+    messageDiv.innerHTML = `
+        <div class="chat-message-sender">System:</div>
+        <div class="chat-message-text">${text}</div>
+    `;
+    
+    messagesContainer.appendChild(messageDiv);
+    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+}
+
+// AI-Generated Avatar Functions
+function loadAIGeneratedAvatar(avatarData) {
+    // Remove existing avatar
+    if(avatar) {
+        scene.remove(avatar);
+    }
+    
+    // Create human-like anime avatar
+    const mode = avatarData.mode || 'realistic';
+    const customizations = avatarData.customizations || {};
+    
+    // Create human-like avatar with anime style
+    avatar = createHumanLikeAvatar(mode, customizations, avatarData.url);
+    avatar.position.set(0, 0, 3);
+    avatar.castShadow = true;
+    
+    scene.add(avatar);
+    
+    let message = `Welcome ${avatarData.name}! Human-like ${mode} avatar loaded!`;
+    if(mode === 'realistic') {
+        message += ' This avatar is designed to match your photo!';
+    }
+    
+    addSystemMessage(message);
+    hideLoading();
+}
+
+function createHumanLikeAvatar(mode, customizations, photoUrl) {
+    const avatarGroup = new THREE.Group();
+    
+    // Head (anime style)
+    const headGeometry = new THREE.SphereGeometry(0.3, 16, 16);
+    const headMaterial = new THREE.MeshLambertMaterial({ 
+        color: getSkinToneColor(customizations.skinTone) 
+    });
+    const head = new THREE.Mesh(headGeometry, headMaterial);
+    head.position.set(0, 1.4, 0);
+    head.castShadow = true;
+    avatarGroup.add(head);
+    
+    // Hair
+    const hairGeometry = new THREE.SphereGeometry(0.35, 16, 16);
+    const hairMaterial = new THREE.MeshLambertMaterial({ 
+        color: getHairColor(customizations.hairColor) 
+    });
+    const hair = new THREE.Mesh(hairGeometry, hairMaterial);
+    hair.position.set(0, 1.5, 0);
+    hair.scale.set(1, 0.8, 1);
+    avatarGroup.add(hair);
+    
+    // Body (torso)
+    const bodyGeometry = new THREE.CylinderGeometry(0.25, 0.3, 0.8, 8);
+    const bodyMaterial = new THREE.MeshLambertMaterial({ color: getClothingColor(mode) });
+    const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
+    body.position.set(0, 0.8, 0);
+    body.castShadow = true;
+    avatarGroup.add(body);
+    
+    // Arms
+    const armGeometry = new THREE.CylinderGeometry(0.08, 0.1, 0.6, 6);
+    const armMaterial = new THREE.MeshLambertMaterial({ color: 0xfdbcb4 });
+    
+    const leftArm = new THREE.Mesh(armGeometry, armMaterial);
+    leftArm.position.set(-0.4, 0.9, 0);
+    leftArm.rotation.z = 0.3;
+    leftArm.castShadow = true;
+    avatarGroup.add(leftArm);
+    
+    const rightArm = new THREE.Mesh(armGeometry, armMaterial);
+    rightArm.position.set(0.4, 0.9, 0);
+    rightArm.rotation.z = -0.3;
+    rightArm.castShadow = true;
+    avatarGroup.add(rightArm);
+    
+    // Legs
+    const legGeometry = new THREE.CylinderGeometry(0.1, 0.12, 0.8, 6);
+    const legMaterial = new THREE.MeshLambertMaterial({ color: getClothingColor(mode) });
+    
+    const leftLeg = new THREE.Mesh(legGeometry, legMaterial);
+    leftLeg.position.set(-0.15, -0.4, 0);
+    leftLeg.castShadow = true;
+    avatarGroup.add(leftLeg);
+    
+    const rightLeg = new THREE.Mesh(legGeometry, legMaterial);
+    rightLeg.position.set(0.15, -0.4, 0);
+    rightLeg.castShadow = true;
+    avatarGroup.add(rightLeg);
+    
+    // Eyes
+    const eyeGeometry = new THREE.SphereGeometry(0.05, 8, 8);
+    const eyeMaterial = new THREE.MeshLambertMaterial({ color: 0x2c3e50 });
+    
+    const leftEye = new THREE.Mesh(eyeGeometry, eyeMaterial);
+    leftEye.position.set(-0.1, 1.45, 0.25);
+    avatarGroup.add(leftEye);
+    
+    const rightEye = new THREE.Mesh(eyeGeometry, eyeMaterial);
+    rightEye.position.set(0.1, 1.45, 0.25);
+    avatarGroup.add(rightEye);
+    
+    // Add photo texture to head for realistic mode
+    if(mode === 'realistic' && photoUrl) {
+        addPhotoTextureToHead(head, photoUrl);
+    }
+    
+    // Add special effects based on mode
+    addHumanAvatarEffects(avatarGroup, mode);
+    
+    // Add body part labels for animation
+    addBodyPartLabels(avatarGroup);
+    
+    return avatarGroup;
+}
+
+function getSkinToneColor(skinTone) {
+    const skinColors = {
+        'auto': 0xfdbcb4,
+        'light': 0xfdbcb4,
+        'medium': 0xe8a87c,
+        'dark': 0x8b4513
+    };
+    return skinColors[skinTone] || skinColors['medium'];
+}
+
+function getHairColor(hairColor) {
+    const hairColors = {
+        'auto': 0x2c3e50,
+        'black': 0x2c3e50,
+        'brown': 0x8b4513,
+        'blonde': 0xf4d03f,
+        'red': 0xe74c3c,
+        'gray': 0x95a5a6
+    };
+    return hairColors[hairColor] || hairColors['black'];
+}
+
+function getEyeColor(eyeColor) {
+    const eyeColors = {
+        'auto': 0x2c3e50,
+        'brown': 0x8b4513,
+        'blue': 0x3498db,
+        'green': 0x2ecc71,
+        'hazel': 0x8b4513
+    };
+    return eyeColors[eyeColor] || eyeColors['brown'];
+}
+
+function getClothingColor(mode) {
+    const clothingColors = {
+        'realistic': 0x34495e,
+        'stylized': 0xe74c3c,
+        'cartoon': 0x9b59b6
+    };
+    return clothingColors[mode] || clothingColors['realistic'];
+}
+
+function addPhotoTextureToHead(head, photoUrl) {
+    const textureLoader = new THREE.TextureLoader();
+    textureLoader.load(photoUrl, function(texture) {
+        const material = new THREE.MeshLambertMaterial({ 
+            map: texture,
+            transparent: true,
+            opacity: 0.8
+        });
+        head.material = material;
+    });
+}
+
+function addHumanAvatarEffects(avatarGroup, mode) {
+    // Add special lighting effects
+    const light = new THREE.PointLight(0xffffff, 0.5, 3);
+    light.position.set(0, 1.5, 0);
+    avatarGroup.add(light);
+    
+    // Add mode-specific effects
+    switch(mode) {
+        case 'stylized':
+            const stylizedGlow = new THREE.PointLight(0xff6b6b, 0.3, 2);
+            stylizedGlow.position.set(0, 1.2, 0);
+            avatarGroup.add(stylizedGlow);
+            break;
+        case 'cartoon':
+            const cartoonGlow = new THREE.PointLight(0x4ecdc4, 0.4, 2.5);
+            cartoonGlow.position.set(0, 1.3, 0);
+            avatarGroup.add(cartoonGlow);
+            break;
+    }
+}
+
+function addPhotoTextureTo3DAvatar(avatar, photoSrc) {
+    // Add photo texture to 3D avatar to make it look more like the person
+    const textureLoader = new THREE.TextureLoader();
+    textureLoader.load(photoSrc, function(texture) {
+        // Create a material that combines the photo with the avatar
+        const material = new THREE.MeshLambertMaterial({ 
+            map: texture,
+            transparent: true,
+            opacity: 0.7,
+            side: THREE.DoubleSide
+        });
+        avatar.material = material;
+        
+        // Add a subtle glow effect
+        const glowGeometry = new THREE.CylinderGeometry(0.52, 0.52, 1.52, 8);
+        const glowMaterial = new THREE.MeshBasicMaterial({ 
+            color: 0xffffff, 
+            transparent: true, 
+            opacity: 0.1 
+        });
+        const glow = new THREE.Mesh(glowGeometry, glowMaterial);
+        avatar.add(glow);
+        
+        console.log('Photo texture applied to 3D avatar');
+    }, undefined, function(error) {
+        console.warn('Could not load photo texture:', error);
+    });
+}
+
+function addAIAvatarEffects(avatar, mode) {
+    // Add special effects based on generation mode
+    switch(mode) {
+        case 'realistic':
+            // Subtle realistic lighting
+            const realisticLight = new THREE.PointLight(0xffffff, 0.3, 5);
+            realisticLight.position.set(0, 1, 0);
+            avatar.add(realisticLight);
+            break;
+        case 'stylized':
+            // Artistic glow
+            const stylizedLight = new THREE.PointLight(0xff6b6b, 0.4, 6);
+            stylizedLight.position.set(0, 1.5, 0);
+            avatar.add(stylizedLight);
+            break;
+        case 'cartoon':
+            // Fun, colorful effects
+            const cartoonLight = new THREE.PointLight(0x4ecdc4, 0.5, 7);
+            cartoonLight.position.set(0, 1.2, 0);
+            avatar.add(cartoonLight);
+            break;
+    }
+}
+
+// Human-like Avatar Functions
+function createPresetHumanAvatar(preset, color, size) {
+    const avatarGroup = new THREE.Group();
+    
+    // Base human structure
+    const headGeometry = new THREE.SphereGeometry(0.3, 16, 16);
+    const headMaterial = new THREE.MeshLambertMaterial({ color: 0xfdbcb4 });
+    const head = new THREE.Mesh(headGeometry, headMaterial);
+    head.position.set(0, 1.4, 0);
+    head.castShadow = true;
+    avatarGroup.add(head);
+    
+    // Hair
+    const hairGeometry = new THREE.SphereGeometry(0.35, 16, 16);
+    const hairMaterial = new THREE.MeshLambertMaterial({ color: getPresetHairColor(preset) });
+    const hair = new THREE.Mesh(hairGeometry, hairMaterial);
+    hair.position.set(0, 1.5, 0);
+    hair.scale.set(1, 0.8, 1);
+    avatarGroup.add(hair);
+    
+    // Body
+    const bodyGeometry = new THREE.CylinderGeometry(0.25, 0.3, 0.8, 8);
+    const bodyMaterial = new THREE.MeshLambertMaterial({ color: getPresetClothingColor(preset) });
+    const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
+    body.position.set(0, 0.8, 0);
+    body.castShadow = true;
+    avatarGroup.add(body);
+    
+    // Arms
+    const armGeometry = new THREE.CylinderGeometry(0.08, 0.1, 0.6, 6);
+    const armMaterial = new THREE.MeshLambertMaterial({ color: 0xfdbcb4 });
+    
+    const leftArm = new THREE.Mesh(armGeometry, armMaterial);
+    leftArm.position.set(-0.4, 0.9, 0);
+    leftArm.rotation.z = 0.3;
+    leftArm.castShadow = true;
+    avatarGroup.add(leftArm);
+    
+    const rightArm = new THREE.Mesh(armGeometry, armMaterial);
+    rightArm.position.set(0.4, 0.9, 0);
+    rightArm.rotation.z = -0.3;
+    rightArm.castShadow = true;
+    avatarGroup.add(rightArm);
+    
+    // Legs
+    const legGeometry = new THREE.CylinderGeometry(0.1, 0.12, 0.8, 6);
+    const legMaterial = new THREE.MeshLambertMaterial({ color: getPresetClothingColor(preset) });
+    
+    const leftLeg = new THREE.Mesh(legGeometry, legMaterial);
+    leftLeg.position.set(-0.15, -0.4, 0);
+    leftLeg.castShadow = true;
+    avatarGroup.add(leftLeg);
+    
+    const rightLeg = new THREE.Mesh(legGeometry, legMaterial);
+    rightLeg.position.set(0.15, -0.4, 0);
+    rightLeg.castShadow = true;
+    avatarGroup.add(rightLeg);
+    
+    // Eyes
+    const eyeGeometry = new THREE.SphereGeometry(0.05, 8, 8);
+    const eyeMaterial = new THREE.MeshLambertMaterial({ color: 0x2c3e50 });
+    
+    const leftEye = new THREE.Mesh(eyeGeometry, eyeMaterial);
+    leftEye.position.set(-0.1, 1.45, 0.25);
+    avatarGroup.add(leftEye);
+    
+    const rightEye = new THREE.Mesh(eyeGeometry, eyeMaterial);
+    rightEye.position.set(0.1, 1.45, 0.25);
+    avatarGroup.add(rightEye);
+    
+    // Add preset-specific features
+    addPresetSpecialFeatures(avatarGroup, preset);
+    
+    // Add body part labels for animation
+    addBodyPartLabels(avatarGroup);
+    
+    // Apply size scaling
+    avatarGroup.scale.setScalar(size);
+    
+    return avatarGroup;
+}
+
+function getPresetHairColor(preset) {
+    const hairColors = {
+        'male1': 0x2c3e50,
+        'female1': 0xe74c3c,
+        'male2': 0x8b4513,
+        'female2': 0xf4d03f,
+        'ninja': 0x2c3e50,
+        'robot': 0x95a5a6,
+        'wizard': 0x9b59b6,
+        'superhero': 0xe74c3c,
+        'dragon': 0x8b4513,
+        'phoenix': 0xf39c12,
+        'cosmic': 0x3498db,
+        'legendary': 0xf1c40f
+    };
+    return hairColors[preset] || 0x2c3e50;
+}
+
+function getPresetClothingColor(preset) {
+    const clothingColors = {
+        'male1': 0x4a90e2,
+        'female1': 0xe24a90,
+        'male2': 0x2ecc71,
+        'female2': 0xf39c12,
+        'ninja': 0x2c3e50,
+        'robot': 0x95a5a6,
+        'wizard': 0x9b59b6,
+        'superhero': 0xe74c3c,
+        'dragon': 0x8b4513,
+        'phoenix': 0xf39c12,
+        'cosmic': 0x3498db,
+        'legendary': 0xf1c40f
+    };
+    return clothingColors[preset] || 0x4a90e2;
+}
+
+function addPresetSpecialFeatures(avatarGroup, preset) {
+    // Add special features based on preset
+    switch(preset) {
+        case 'ninja':
+            // Add ninja mask
+            const maskGeometry = new THREE.SphereGeometry(0.32, 16, 16);
+            const maskMaterial = new THREE.MeshLambertMaterial({ color: 0x2c3e50, transparent: true, opacity: 0.8 });
+            const mask = new THREE.Mesh(maskGeometry, maskMaterial);
+            mask.position.set(0, 1.4, 0);
+            mask.scale.set(1, 0.6, 1);
+            avatarGroup.add(mask);
+            break;
+        case 'robot':
+            // Add robot antenna
+            const antennaGeometry = new THREE.CylinderGeometry(0.02, 0.02, 0.3, 4);
+            const antennaMaterial = new THREE.MeshLambertMaterial({ color: 0x95a5a6 });
+            const antenna = new THREE.Mesh(antennaGeometry, antennaMaterial);
+            antenna.position.set(0, 1.8, 0);
+            avatarGroup.add(antenna);
+            break;
+        case 'wizard':
+            // Add wizard hat
+            const hatGeometry = new THREE.ConeGeometry(0.3, 0.4, 8);
+            const hatMaterial = new THREE.MeshLambertMaterial({ color: 0x9b59b6 });
+            const hat = new THREE.Mesh(hatGeometry, hatMaterial);
+            hat.position.set(0, 1.8, 0);
+            avatarGroup.add(hat);
+            break;
+        case 'superhero':
+            // Add cape
+            const capeGeometry = new THREE.PlaneGeometry(0.8, 1.2);
+            const capeMaterial = new THREE.MeshLambertMaterial({ color: 0xe74c3c, side: THREE.DoubleSide });
+            const cape = new THREE.Mesh(capeGeometry, capeMaterial);
+            cape.position.set(0, 0.8, -0.3);
+            cape.rotation.x = 0.2;
+            avatarGroup.add(cape);
+            break;
+    }
+    
+    // Add special lighting effects
+    const light = new THREE.PointLight(0xffffff, 0.5, 3);
+    light.position.set(0, 1.5, 0);
+    avatarGroup.add(light);
+}
+
+// Multiplayer functions
+function createOtherAvatar(userId, name, position, preset = 'male1') {
+    // Create avatar for another user
+    let avatarColor = 0x00aaff;
+    let avatarScale = 1;
+    
+    switch(preset) {
+        case 'male1':
+            avatarColor = 0x4a90e2;
+            break;
+        case 'female1':
+            avatarColor = 0xe24a90;
+            avatarScale = 0.9;
+            break;
+        case 'male2':
+            avatarColor = 0x2ecc71;
+            break;
