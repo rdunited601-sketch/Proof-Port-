@@ -91,6 +91,7 @@ async function setup3DEnvironment() {
     try {
         // Create scene
         AppState.scene = new THREE.Scene();
+        AppState.scene.background = new THREE.Color(0x87ceeb); // Sky blue background
         
         // Setup camera
         AppState.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
@@ -109,14 +110,42 @@ async function setup3DEnvironment() {
         });
         AppState.renderer.setSize(window.innerWidth, window.innerHeight);
         AppState.renderer.setPixelRatio(window.devicePixelRatio);
+        AppState.renderer.shadowMap.enabled = true;
+        AppState.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
         
         // Add lights
-        const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
         AppState.scene.add(ambientLight);
         
-        const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
-        directionalLight.position.set(10, 10, 10);
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 1.0);
+        directionalLight.position.set(10, 20, 10);
+        directionalLight.castShadow = true;
+        directionalLight.shadow.camera.near = 0.1;
+        directionalLight.shadow.camera.far = 50;
+        directionalLight.shadow.camera.left = -20;
+        directionalLight.shadow.camera.right = 20;
+        directionalLight.shadow.camera.top = 20;
+        directionalLight.shadow.camera.bottom = -20;
         AppState.scene.add(directionalLight);
+
+        // Create floor
+        const floorGeometry = new THREE.PlaneGeometry(20, 20);
+        const floorMaterial = new THREE.MeshStandardMaterial({ 
+            color: 0x888888,
+            roughness: 0.8,
+            metalness: 0.1
+        });
+        const floor = new THREE.Mesh(floorGeometry, floorMaterial);
+        floor.rotation.x = -Math.PI / 2;
+        floor.position.y = 0;
+        floor.receiveShadow = true;
+        AppState.scene.add(floor);
+
+        // Create a simple room based on selected room
+        createSimpleRoom();
+
+        // Create avatar
+        createSimpleAvatar();
 
         // Set initialization flag
         AppState.initialized = true;
@@ -127,6 +156,62 @@ async function setup3DEnvironment() {
         console.error('[ERROR] Failed to setup 3D environment:', error);
         return false;
     }
+}
+
+// Create simple room environment
+function createSimpleRoom() {
+    const roomColor = AppState.selectedRoom === 'mentor-room' ? 0x2C3E50 :
+                     AppState.selectedRoom === 'innovation-lab' ? 0x8E44AD : 0x27AE60;
+
+    // Create some furniture
+    const tableGeometry = new THREE.BoxGeometry(3, 0.1, 1.5);
+    const tableMaterial = new THREE.MeshStandardMaterial({ color: 0x8B4513 });
+    const table = new THREE.Mesh(tableGeometry, tableMaterial);
+    table.position.set(0, 0.75, -2);
+    table.castShadow = true;
+    table.receiveShadow = true;
+    AppState.scene.add(table);
+
+    // Add a few chairs
+    for (let i = 0; i < 4; i++) {
+        const chairGeometry = new THREE.BoxGeometry(0.4, 0.8, 0.4);
+        const chairMaterial = new THREE.MeshStandardMaterial({ color: roomColor });
+        const chair = new THREE.Mesh(chairGeometry, chairMaterial);
+        chair.position.set(-1 + i * 0.7, 0.4, -1);
+        chair.castShadow = true;
+        chair.receiveShadow = true;
+        AppState.scene.add(chair);
+    }
+
+    console.log('[DEBUG] Simple room created');
+}
+
+// Create simple avatar
+function createSimpleAvatar() {
+    // Create a simple avatar representation
+    const avatarGroup = new THREE.Group();
+    
+    // Body
+    const bodyGeometry = new THREE.CylinderGeometry(0.3, 0.3, 1.2);
+    const bodyMaterial = new THREE.MeshStandardMaterial({ color: 0x4444ff });
+    const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
+    body.position.y = 0.6;
+    body.castShadow = true;
+    avatarGroup.add(body);
+    
+    // Head
+    const headGeometry = new THREE.SphereGeometry(0.2);
+    const headMaterial = new THREE.MeshStandardMaterial({ color: 0xffdbac });
+    const head = new THREE.Mesh(headGeometry, headMaterial);
+    head.position.y = 1.4;
+    head.castShadow = true;
+    avatarGroup.add(head);
+
+    avatarGroup.position.set(0, 0, 2);
+    AppState.scene.add(avatarGroup);
+    AppState.avatar = avatarGroup;
+
+    console.log('[DEBUG] Simple avatar created');
 }
 
 // Loading screen management (disabled)
